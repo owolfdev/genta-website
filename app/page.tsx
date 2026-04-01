@@ -1,8 +1,16 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Share_Tech_Mono } from "next/font/google";
-import { getMockResponse } from "@/lib/mockResponder";
+import {
+  parseBotProtocolToSegments,
+  stripBotProtocolForHistory,
+  stripIncompleteBotProtocol,
+} from "@/lib/botProtocol";
+import { conversationIdFromChatiqJson, welcomeTextFromChatiqJson } from "@/lib/chatiqWelcomeResponse";
+import { consumeChatiqSseStream } from "@/lib/chatiqStream";
+import { revealBufferedBotText } from "@/lib/revealBotBuffer";
+import { ASSISTANT_WELCOME_FALLBACK_TEXT, SHELL_UI } from "@/lib/shellConfig";
 import { useShellSound } from "@/lib/useShellSound";
 
 type ChatRole = "user" | "bot" | "system";
@@ -20,23 +28,92 @@ const terminalFont = Share_Tech_Mono({
 const USER_PREFIX = "> ";
 const SYSTEM_PREFIX = "# ";
 
+function AudioFeedbackIcon({ muted }: { muted: boolean }) {
+  return muted ? (
+    <svg
+      className="h-4 w-4"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden={true}
+    >
+      <path d="M11 5 6 9H2v6h4l5 4V5z" />
+      <line x1="22" y1="9" x2="16" y2="15" />
+      <line x1="16" y1="9" x2="22" y2="15" />
+    </svg>
+  ) : (
+    <svg
+      className="h-4 w-4"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden={true}
+    >
+      <path d="M11 5 6 9H2v6h4l5 4V5z" />
+      <path d="M15.54 8.46a5 5 0 010 7.07" />
+      <path d="M19.07 4.93a9 9 0 010 14.14" />
+    </svg>
+  );
+}
+
 /** Prompts shorter than this are revealed character-by-character with digital-text audio. */
 const SHORT_PROMPT_CHAR_MAX = 48;
 
+/** If the log is within this many px of the bottom, new content auto-scrolls. */
+const SCROLL_STICK_BOTTOM_PX = 72;
+
+function buildChatiqHistory(messages: ChatMessage[]): { role: string; content: string }[] {
+  return messages
+    .filter((m) => m.role === "user" || m.role === "bot")
+    .map((m) => ({
+      role: m.role === "user" ? "user" : "assistant",
+      content: m.role === "bot" ? stripBotProtocolForHistory(m.text) : m.text,
+    }));
+}
+
+function BotMessageBody({ raw, streaming }: { raw: string; streaming?: boolean }) {
+  const source = streaming ? stripIncompleteBotProtocol(raw) : raw;
+  const segs = parseBotProtocolToSegments(source);
+  if (segs.length === 0) {
+    return null;
+  }
+  return (
+    <>
+      {segs.map((seg, i) => (
+        <Fragment key={i}>
+          {seg.kind === "system" ? (
+            <span className="text-[#4a6b58]">
+              {SYSTEM_PREFIX}
+              <span className="text-[#7aab8a] [text-shadow:0_0_8px_rgba(122,171,138,0.42)]">{seg.text}</span>
+            </span>
+          ) : (
+            <span className="text-[#b8892e]">{seg.text}</span>
+          )}
+          {i < segs.length - 1 ? "\n" : null}
+        </Fragment>
+      ))}
+    </>
+  );
+}
+
 export default function Home() {
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      id: crypto.randomUUID(),
-      role: "system",
-      text: "GENTA shell mock online. API mode: offline.",
-    },
-  ]);
+  const conversationIdRef = useRef<string | null>(null);
+  const botBufferRef = useRef("");
+  const streamDoneRef = useRef(false);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [draftBotText, setDraftBotText] = useState("");
   const [revealingUserPrompt, setRevealingUserPrompt] = useState(false);
   const [draftUserText, setDraftUserText] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
+  const stickToBottomRef = useRef(true);
   const inputRef = useRef<HTMLInputElement>(null);
   const {
     soundEnabled,
@@ -45,7 +122,9 @@ export default function Home() {
     playSend,
     startUserPromptTypingSound,
     stopUserPromptTypingSound,
-    startTyping,
+    startBotThinkingSound,
+    stopBotThinkingSound,
+    startStreamTypingSound,
     stopTyping,
   } = useShellSound();
 
@@ -54,11 +133,22 @@ export default function Home() {
     [input, isTyping, revealingUserPrompt],
   );
 
-  useEffect(() => {
-    if (!scrollRef.current) {
+  const updateStickToBottom = () => {
+    const el = scrollRef.current;
+    if (!el) {
       return;
     }
-    scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    const { scrollTop, scrollHeight, clientHeight } = el;
+    const distFromBottom = scrollHeight - scrollTop - clientHeight;
+    stickToBottomRef.current = distFromBottom <= SCROLL_STICK_BOTTOM_PX;
+  };
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el || !stickToBottomRef.current) {
+      return;
+    }
+    el.scrollTop = el.scrollHeight;
   }, [messages, draftBotText, draftUserText]);
 
   useEffect(() => {
@@ -75,11 +165,200 @@ export default function Home() {
     return () => window.clearTimeout(id);
   }, [isTyping, revealingUserPrompt]);
 
+  const streamAssistantFromResponse = useCallback(
+    async (res: Response): Promise<string> => {
+      botBufferRef.current = "";
+      streamDoneRef.current = false;
+      setDraftBotText("");
+
+      const streamTask = (async () => {
+        try {
+          return await consumeChatiqSseStream(
+            res,
+            (chunk) => {
+              botBufferRef.current += chunk;
+            },
+            (meta) => {
+              if (meta.conversationId) {
+                conversationIdRef.current = meta.conversationId;
+              }
+            },
+          );
+        } finally {
+          streamDoneRef.current = true;
+        }
+      })();
+
+      const revealTask = revealBufferedBotText({
+        getBuffer: () => botBufferRef.current,
+        isStreamDone: () => streamDoneRef.current,
+        setVisible: setDraftBotText,
+        onFirstChar: () => {
+          stopBotThinkingSound();
+        },
+        onRevealSoundKind: (kind) => {
+          void startStreamTypingSound(kind);
+        },
+        onComplete: () => {
+          stopBotThinkingSound();
+          stopTyping();
+        },
+      });
+
+      await Promise.all([streamTask, revealTask]);
+      const raw = botBufferRef.current.trim();
+      return raw ? botBufferRef.current : "(empty response)";
+    },
+    [startStreamTypingSound, stopBotThinkingSound, stopTyping],
+  );
+
+  const revealStaticAssistantText = useCallback(
+    async (fullText: string) => {
+      botBufferRef.current = fullText;
+      streamDoneRef.current = true;
+      setDraftBotText("");
+      await revealBufferedBotText({
+        getBuffer: () => botBufferRef.current,
+        isStreamDone: () => true,
+        setVisible: setDraftBotText,
+        onFirstChar: () => {
+          stopBotThinkingSound();
+        },
+        onRevealSoundKind: (kind) => {
+          void startStreamTypingSound(kind);
+        },
+        onComplete: () => {
+          stopBotThinkingSound();
+          stopTyping();
+        },
+      });
+    },
+    [startStreamTypingSound, stopBotThinkingSound, stopTyping],
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const runWelcome = async () => {
+      stickToBottomRef.current = true;
+      void unlock();
+      setIsTyping(true);
+      setDraftBotText("");
+      await startBotThinkingSound();
+
+      let responseText = "";
+      try {
+        const res = await fetch("/api/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            is_welcome: true,
+            message: "",
+            stream: false,
+          }),
+        });
+
+        if (cancelled) {
+          stopTyping();
+          stopBotThinkingSound();
+          setDraftBotText("");
+          setIsTyping(false);
+          return;
+        }
+
+        if (!res.ok) {
+          stopBotThinkingSound();
+          let errMsg = `HTTP ${res.status}`;
+          const ct = res.headers.get("content-type") ?? "";
+          try {
+            if (ct.includes("application/json")) {
+              const j = (await res.json()) as { error?: { message?: string } };
+              errMsg = j.error?.message ?? errMsg;
+            } else {
+              errMsg = (await res.text()) || errMsg;
+            }
+          } catch {
+            /* keep errMsg */
+          }
+          console.warn("[genta] welcome request failed:", errMsg);
+          responseText = ASSISTANT_WELCOME_FALLBACK_TEXT;
+        } else {
+          const ct = res.headers.get("content-type") ?? "";
+          if (!ct.includes("application/json")) {
+            stopBotThinkingSound();
+            console.warn("[genta] welcome: expected JSON, got", ct);
+            responseText = ASSISTANT_WELCOME_FALLBACK_TEXT;
+          } else {
+            const data = (await res.json()) as Record<string, unknown>;
+            if (data.error != null) {
+              stopBotThinkingSound();
+              console.warn("[genta] welcome API error payload:", data.error);
+              responseText = ASSISTANT_WELCOME_FALLBACK_TEXT;
+            } else {
+              const cid = conversationIdFromChatiqJson(data);
+              if (cid) {
+                conversationIdRef.current = cid;
+              }
+              responseText = welcomeTextFromChatiqJson(data);
+              if (!responseText.trim()) {
+                responseText = ASSISTANT_WELCOME_FALLBACK_TEXT;
+              }
+              await revealStaticAssistantText(responseText);
+              if (cancelled) {
+                stopTyping();
+                stopBotThinkingSound();
+                setDraftBotText("");
+                setIsTyping(false);
+                return;
+              }
+            }
+          }
+        }
+      } catch (e) {
+        if (cancelled) {
+          stopTyping();
+          stopBotThinkingSound();
+          setDraftBotText("");
+          setIsTyping(false);
+          return;
+        }
+        stopBotThinkingSound();
+        stopTyping();
+        console.warn("[genta] welcome request error:", e);
+        responseText = ASSISTANT_WELCOME_FALLBACK_TEXT;
+      }
+
+      if (cancelled) {
+        stopTyping();
+        stopBotThinkingSound();
+        setDraftBotText("");
+        setIsTyping(false);
+        return;
+      }
+      setMessages((prev) => [...prev, { id: crypto.randomUUID(), role: "bot", text: responseText }]);
+      stopTyping();
+      stopBotThinkingSound();
+      setDraftBotText("");
+      setIsTyping(false);
+    };
+
+    void runWelcome();
+    return () => {
+      cancelled = true;
+      stopTyping();
+      stopBotThinkingSound();
+      setIsTyping(false);
+      setDraftBotText("");
+    };
+  }, [revealStaticAssistantText, startBotThinkingSound, stopBotThinkingSound, stopTyping, unlock]);
+
   const onSubmit = async (rawText: string) => {
     const text = rawText.trim();
     if (!text || isTyping || revealingUserPrompt) {
       return;
     }
+
+    stickToBottomRef.current = true;
 
     await unlock();
     playSend();
@@ -103,14 +382,49 @@ export default function Home() {
       setMessages((prev) => [...prev, { id: crypto.randomUUID(), role: "user", text }]);
     }
 
-    const responseText = getMockResponse(text);
+    const priorHistory = buildChatiqHistory(
+      messages.filter((m) => m.role === "user" || m.role === "bot"),
+    );
+
     setIsTyping(true);
     setDraftBotText("");
-    startTyping();
+    await startBotThinkingSound();
 
-    for (let i = 1; i <= responseText.length; i += 1) {
-      await new Promise((resolve) => setTimeout(resolve, 14));
-      setDraftBotText(responseText.slice(0, i));
+    let responseText = "";
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: text,
+          history: priorHistory,
+          conversation_id: conversationIdRef.current,
+          stream: true,
+        }),
+      });
+
+      if (!res.ok) {
+        stopBotThinkingSound();
+        let errMsg = `HTTP ${res.status}`;
+        const ct = res.headers.get("content-type") ?? "";
+        try {
+          if (ct.includes("application/json")) {
+            const j = (await res.json()) as { error?: { message?: string } };
+            errMsg = j.error?.message ?? errMsg;
+          } else {
+            errMsg = (await res.text()) || errMsg;
+          }
+        } catch {
+          /* keep errMsg */
+        }
+        responseText = `[error] ${errMsg}`;
+      } else {
+        responseText = await streamAssistantFromResponse(res);
+      }
+    } catch (e) {
+      stopBotThinkingSound();
+      stopTyping();
+      responseText = `[error] ${e instanceof Error ? e.message : String(e)}`;
     }
 
     setMessages((prev) => [
@@ -118,6 +432,7 @@ export default function Home() {
       { id: crypto.randomUUID(), role: "bot", text: responseText },
     ]);
     stopTyping();
+    stopBotThinkingSound();
     setDraftBotText("");
     setIsTyping(false);
   };
@@ -125,32 +440,36 @@ export default function Home() {
   useEffect(() => {
     return () => {
       stopTyping();
+      stopBotThinkingSound();
       stopUserPromptTypingSound();
     };
-  }, [stopTyping, stopUserPromptTypingSound]);
+  }, [stopTyping, stopBotThinkingSound, stopUserPromptTypingSound]);
 
   return (
     <div
-      className={`${terminalFont.className} relative min-h-screen overflow-hidden bg-[#080602] text-[#ffcc66]`}
+      className={`${terminalFont.className} relative h-[100dvh] overflow-hidden bg-[#080602] text-[#ffcc66]`}
     >
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_85%_75%_at_50%_45%,transparent_40%,rgba(0,0,0,0.55)_100%),radial-gradient(ellipse_100%_60%_at_50%_50%,rgba(255,190,90,0.06),transparent_55%)]" />
       <div className="scanlines pointer-events-none absolute inset-0 opacity-20" />
 
-      <main className="relative mx-auto flex min-h-screen w-full max-w-5xl flex-col p-6 sm:p-10">
-        <header className="mb-5 flex items-center justify-between gap-3 border-b border-[#b8892e] pb-3 text-xs tracking-[0.25em] text-[#b8892e] sm:text-sm">
-          <span>GENTA // LOCAL-FIRST SUBSTRATE // MOCK MODE</span>
+      <main className="relative z-10 mx-auto box-border flex h-full min-h-0 w-full max-w-5xl flex-col px-6 pb-6 pt-6 sm:px-10 sm:pb-8 sm:pt-10">
+        <header className="mb-5 shrink-0 flex items-center justify-between gap-3 border-b border-[#b8892e] pb-3 text-xs tracking-[0.25em] text-[#b8892e] sm:text-sm">
+          <span>{SHELL_UI.headerTitle}</span>
           <button
             type="button"
             onClick={toggleSoundEnabled}
-            className="rounded border border-[#4a6b58] px-2 py-1 text-[10px] tracking-[0.2em] text-[#7aab8a] transition hover:border-[#7aab8a] hover:text-[#9fcbad]"
+            aria-pressed={soundEnabled}
+            aria-label={soundEnabled ? "Turn audio feedback off" : "Turn audio feedback on"}
+            className="inline-flex shrink-0 cursor-pointer items-center justify-center border-0 bg-transparent p-0 text-[#7aab8a] shadow-none ring-0 transition hover:text-[#9fcbad] focus:outline-none"
           >
-            {soundEnabled ? "SOUND ON" : "SOUND OFF"}
+            <AudioFeedbackIcon muted={!soundEnabled} />
           </button>
         </header>
 
         <section
           ref={scrollRef}
-          className="flex-1 overflow-y-auto whitespace-pre-wrap wrap-break-word pr-1 text-[17px] leading-relaxed [text-shadow:0_0_8px_rgba(255,204,102,0.62)]"
+          onScroll={updateStickToBottom}
+          className="genta-chat-scroll min-h-0 flex-1 overflow-y-auto overscroll-y-contain whitespace-pre-wrap wrap-break-word pr-1 text-[17px] leading-relaxed [text-shadow:0_0_8px_rgba(255,204,102,0.62)]"
         >
           {messages.map((m) => (
             <p className="mb-2.5" key={m.id}>
@@ -165,7 +484,9 @@ export default function Home() {
                   <span className="text-[#7aab8a]">{m.text}</span>
                 </>
               ) : (
-                <span className="ml-[2ch] text-[#b8892e]">{m.text}</span>
+                <span className="ml-[2ch] inline">
+                  <BotMessageBody raw={m.text} />
+                </span>
               )}
             </p>
           ))}
@@ -180,8 +501,8 @@ export default function Home() {
 
           {isTyping && (
             <p className="mb-2.5">
-              <span className="ml-[2ch] text-[#b8892e]">
-                {draftBotText}
+              <span className="ml-[2ch] inline text-[#b8892e]">
+                <BotMessageBody raw={draftBotText} streaming={true} />
                 <span className="blink">▌</span>
               </span>
             </p>
@@ -189,7 +510,7 @@ export default function Home() {
         </section>
 
         <form
-          className="mt-4 border-t border-[#4a6b58] pt-4"
+          className="mt-4 shrink-0 border-t border-[#4a6b58] bg-[#080602] pt-4"
           onSubmit={(e) => {
             e.preventDefault();
             void onSubmit(input);

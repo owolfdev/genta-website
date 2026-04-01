@@ -6,8 +6,9 @@ import { SHELL_SOUNDS } from "./soundConfig";
 type AudioState = {
   ctx: AudioContext;
   typingTimer: number | null;
-  ambientEl: HTMLAudioElement | null;
+  botThinkingEl: HTMLAudioElement | null;
   botTypingEl: HTMLAudioElement | null;
+  systemStreamTypingEl: HTMLAudioElement | null;
   userPromptTypingEl: HTMLAudioElement | null;
 };
 
@@ -44,8 +45,9 @@ export function useShellSound() {
       stateRef.current = {
         ctx: new Ctor(),
         typingTimer: null,
-        ambientEl: null,
+        botThinkingEl: null,
         botTypingEl: null,
+        systemStreamTypingEl: null,
         userPromptTypingEl: null,
       };
     }
@@ -69,39 +71,53 @@ export function useShellSound() {
     const syncEl = (
       current: HTMLAudioElement | null,
       nextSrc: string,
-      nextVolume: number,
+      nextVolume: number | null,
       nextLoop: boolean,
+      createVolumeFallback: number,
     ) => {
+      const volForNew = nextVolume ?? createVolumeFallback;
       if (!current) {
-        return makeEl(nextSrc, nextVolume, nextLoop);
+        return makeEl(nextSrc, volForNew, nextLoop);
       }
       const currentPath = new URL(current.src, window.location.origin).pathname;
       if (currentPath !== nextSrc) {
         current.pause();
-        return makeEl(nextSrc, nextVolume, nextLoop);
+        return makeEl(nextSrc, volForNew, nextLoop);
       }
-      current.volume = nextVolume;
+      if (nextVolume !== null) {
+        current.volume = nextVolume;
+      }
       current.loop = nextLoop;
       return current;
     };
 
-    state.ambientEl = syncEl(
-      state.ambientEl,
-      SHELL_SOUNDS.ambient.src,
-      SHELL_SOUNDS.ambient.volume,
-      SHELL_SOUNDS.ambient.loop,
+    state.botThinkingEl = syncEl(
+      state.botThinkingEl,
+      SHELL_SOUNDS.botThinking.src,
+      SHELL_SOUNDS.botThinking.volume,
+      SHELL_SOUNDS.botThinking.loop,
+      SHELL_SOUNDS.botThinking.volume,
     );
     state.botTypingEl = syncEl(
       state.botTypingEl,
       SHELL_SOUNDS.botTyping.src,
       SHELL_SOUNDS.botTyping.volume,
       SHELL_SOUNDS.botTyping.loop,
+      SHELL_SOUNDS.botTyping.volume,
+    );
+    state.systemStreamTypingEl = syncEl(
+      state.systemStreamTypingEl,
+      SHELL_SOUNDS.systemStreamTyping.src,
+      SHELL_SOUNDS.systemStreamTyping.volume,
+      SHELL_SOUNDS.systemStreamTyping.loop,
+      SHELL_SOUNDS.systemStreamTyping.volume,
     );
     state.userPromptTypingEl = syncEl(
       state.userPromptTypingEl,
       SHELL_SOUNDS.userPromptTyping.src,
       SHELL_SOUNDS.userPromptTyping.volume,
       SHELL_SOUNDS.userPromptTyping.loop,
+      SHELL_SOUNDS.userPromptTyping.volume,
     );
 
     return state;
@@ -115,22 +131,14 @@ export function useShellSound() {
     if (state.ctx.state !== "running") {
       await state.ctx.resume();
     }
-
-    if (soundEnabled && state.ambientEl) {
-      try {
-        await state.ambientEl.play();
-      } catch {
-        // User gesture policies can still reject play in edge cases.
-      }
-    }
-  }, [ensureMedia, soundEnabled]);
+  }, [ensureMedia]);
 
   const stopAllMedia = useCallback(() => {
     const state = stateRef.current;
     if (!state) {
       return;
     }
-    for (const el of [state.ambientEl, state.botTypingEl, state.userPromptTypingEl]) {
+    for (const el of [state.botThinkingEl, state.botTypingEl, state.systemStreamTypingEl, state.userPromptTypingEl]) {
       if (!el) {
         continue;
       }
@@ -144,18 +152,6 @@ export function useShellSound() {
       state.typingTimer = null;
     }
   }, []);
-
-  const startAmbient = useCallback(async () => {
-    const state = await ensureMedia();
-    if (!state || !soundEnabled || !state.ambientEl) {
-      return;
-    }
-    try {
-      await state.ambientEl.play();
-    } catch {
-      // Fallback behavior handled by other cues.
-    }
-  }, [ensureMedia, soundEnabled]);
 
   const playSend = useCallback(() => {
     // Intentionally muted for now; keeping hook API stable for later UX pass.
@@ -186,43 +182,122 @@ export function useShellSound() {
     state.userPromptTypingEl.currentTime = 0;
   }, []);
 
-  const startTyping = useCallback(async () => {
+  const startBotThinkingSound = useCallback(async () => {
     if (!soundEnabled) {
       return;
     }
     const state = await ensureMedia();
-    if (!state) {
+    if (!state?.botThinkingEl) {
       return;
     }
-    if (state.botTypingEl) {
-      if (!state.botTypingEl.paused) {
-        return;
-      }
+    if (state.botTypingEl && !state.botTypingEl.paused) {
+      state.botTypingEl.pause();
       state.botTypingEl.currentTime = 0;
-      try {
-        await state.botTypingEl.play();
-        return;
-      } catch {
-        // Fall through to synth typing.
-      }
     }
-    if (state.ctx.state !== "running" || state.typingTimer != null) {
+    if (state.systemStreamTypingEl && !state.systemStreamTypingEl.paused) {
+      state.systemStreamTypingEl.pause();
+      state.systemStreamTypingEl.currentTime = 0;
+    }
+    state.botThinkingEl.currentTime = 0;
+    try {
+      await state.botThinkingEl.play();
+    } catch {
+      /* ignore */
+    }
+  }, [ensureMedia, soundEnabled]);
+
+  const stopBotThinkingSound = useCallback(() => {
+    const state = stateRef.current;
+    if (!state?.botThinkingEl || state.botThinkingEl.paused) {
       return;
     }
-    state.typingTimer = window.setInterval(() => {
-      const freq = 220 + Math.random() * 120;
-      beep(state.ctx, freq, 20, 0.008);
-    }, 38);
-  }, [ensureMedia, soundEnabled]);
+    state.botThinkingEl.pause();
+    state.botThinkingEl.currentTime = 0;
+  }, []);
+
+  const startStreamTypingSound = useCallback(
+    async (kind: "bot" | "system") => {
+      if (!soundEnabled) {
+        return;
+      }
+      const state = await ensureMedia();
+      if (!state) {
+        return;
+      }
+      if (state.typingTimer != null) {
+        window.clearInterval(state.typingTimer);
+        state.typingTimer = null;
+      }
+      if (state.botThinkingEl && !state.botThinkingEl.paused) {
+        state.botThinkingEl.pause();
+        state.botThinkingEl.currentTime = 0;
+      }
+      if (kind === "bot") {
+        if (state.systemStreamTypingEl && !state.systemStreamTypingEl.paused) {
+          state.systemStreamTypingEl.pause();
+          state.systemStreamTypingEl.currentTime = 0;
+        }
+        if (state.botTypingEl && !state.botTypingEl.paused) {
+          return;
+        }
+        if (state.botTypingEl) {
+          state.botTypingEl.currentTime = 0;
+          try {
+            await state.botTypingEl.play();
+            return;
+          } catch {
+            /* fall through to synth */
+          }
+        }
+      } else {
+        if (state.botTypingEl && !state.botTypingEl.paused) {
+          state.botTypingEl.pause();
+          state.botTypingEl.currentTime = 0;
+        }
+        if (state.systemStreamTypingEl && !state.systemStreamTypingEl.paused) {
+          return;
+        }
+        if (state.systemStreamTypingEl) {
+          state.systemStreamTypingEl.currentTime = 0;
+          try {
+            await state.systemStreamTypingEl.play();
+            return;
+          } catch {
+            /* fall through to softer synth */
+          }
+        }
+      }
+      if (state.ctx.state !== "running" || state.typingTimer != null) {
+        return;
+      }
+      const vol = kind === "system" ? 0.005 : 0.008;
+      state.typingTimer = window.setInterval(() => {
+        const freq = kind === "system" ? 180 + Math.random() * 80 : 220 + Math.random() * 120;
+        beep(state.ctx, freq, 20, vol);
+      }, kind === "system" ? 42 : 38);
+    },
+    [ensureMedia, soundEnabled],
+  );
+
+  /** @deprecated Prefer `startStreamTypingSound("bot")` for new code. */
+  const startTyping = useCallback(async () => startStreamTypingSound("bot"), [startStreamTypingSound]);
 
   const stopTyping = useCallback(() => {
     const state = stateRef.current;
     if (!state) {
       return;
     }
+    if (state.botThinkingEl && !state.botThinkingEl.paused) {
+      state.botThinkingEl.pause();
+      state.botThinkingEl.currentTime = 0;
+    }
     if (state.botTypingEl && !state.botTypingEl.paused) {
       state.botTypingEl.pause();
       state.botTypingEl.currentTime = 0;
+    }
+    if (state.systemStreamTypingEl && !state.systemStreamTypingEl.paused) {
+      state.systemStreamTypingEl.pause();
+      state.systemStreamTypingEl.currentTime = 0;
     }
     if (state.typingTimer == null) {
       return;
@@ -236,12 +311,10 @@ export function useShellSound() {
       const next = !prev;
       if (!next) {
         stopAllMedia();
-      } else {
-        void startAmbient();
       }
       return next;
     });
-  }, [startAmbient, stopAllMedia]);
+  }, [stopAllMedia]);
 
   const playDone = useCallback(() => {
     // Intentionally unused: no cue after bot finishes (avoids second sound).
@@ -251,11 +324,13 @@ export function useShellSound() {
     soundEnabled,
     toggleSoundEnabled,
     unlock,
-    startAmbient,
     playSend,
     startUserPromptTypingSound,
     stopUserPromptTypingSound,
     playDone,
+    startBotThinkingSound,
+    stopBotThinkingSound,
+    startStreamTypingSound,
     startTyping,
     stopTyping,
     stopAllMedia,
