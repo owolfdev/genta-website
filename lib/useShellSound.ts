@@ -8,7 +8,7 @@ type AudioState = {
   typingTimer: number | null;
   ambientEl: HTMLAudioElement | null;
   botTypingEl: HTMLAudioElement | null;
-  systemEventEl: HTMLAudioElement | null;
+  userPromptTypingEl: HTMLAudioElement | null;
 };
 
 function beep(ctx: AudioContext, frequency: number, durationMs: number, gainValue: number) {
@@ -46,7 +46,7 @@ export function useShellSound() {
         typingTimer: null,
         ambientEl: null,
         botTypingEl: null,
-        systemEventEl: null,
+        userPromptTypingEl: null,
       };
     }
     return stateRef.current;
@@ -97,11 +97,11 @@ export function useShellSound() {
       SHELL_SOUNDS.botTyping.volume,
       SHELL_SOUNDS.botTyping.loop,
     );
-    state.systemEventEl = syncEl(
-      state.systemEventEl,
-      SHELL_SOUNDS.systemEvent.src,
-      SHELL_SOUNDS.systemEvent.volume,
-      SHELL_SOUNDS.systemEvent.loop,
+    state.userPromptTypingEl = syncEl(
+      state.userPromptTypingEl,
+      SHELL_SOUNDS.userPromptTyping.src,
+      SHELL_SOUNDS.userPromptTyping.volume,
+      SHELL_SOUNDS.userPromptTyping.loop,
     );
 
     return state;
@@ -130,7 +130,7 @@ export function useShellSound() {
     if (!state) {
       return;
     }
-    for (const el of [state.ambientEl, state.botTypingEl, state.systemEventEl]) {
+    for (const el of [state.ambientEl, state.botTypingEl, state.userPromptTypingEl]) {
       if (!el) {
         continue;
       }
@@ -161,30 +161,30 @@ export function useShellSound() {
     // Intentionally muted for now; keeping hook API stable for later UX pass.
   }, []);
 
-  const playSystem = useCallback(() => {
+  const startUserPromptTypingSound = useCallback(async () => {
     if (!soundEnabled) {
       return;
     }
+    const state = await ensureMedia();
+    if (!state?.userPromptTypingEl) {
+      return;
+    }
+    state.userPromptTypingEl.currentTime = 0;
+    try {
+      await state.userPromptTypingEl.play();
+    } catch {
+      // Autoplay / decode edge cases.
+    }
+  }, [ensureMedia, soundEnabled]);
+
+  const stopUserPromptTypingSound = useCallback(() => {
     const state = stateRef.current;
-    if (state?.systemEventEl) {
-      state.systemEventEl.currentTime = 0;
-      state.systemEventEl.play().catch(() => {
-        const synthState = getOrCreate();
-        if (!synthState || synthState.ctx.state !== "running") {
-          return;
-        }
-        beep(synthState.ctx, 420, 60, 0.025);
-        window.setTimeout(() => beep(synthState.ctx, 730, 75, 0.02), 55);
-      });
+    if (!state?.userPromptTypingEl || state.userPromptTypingEl.paused) {
       return;
     }
-    const synthState = getOrCreate();
-    if (!synthState || synthState.ctx.state !== "running") {
-      return;
-    }
-    beep(synthState.ctx, 420, 60, 0.025);
-    window.setTimeout(() => beep(synthState.ctx, 730, 75, 0.02), 55);
-  }, [getOrCreate, soundEnabled]);
+    state.userPromptTypingEl.pause();
+    state.userPromptTypingEl.currentTime = 0;
+  }, []);
 
   const startTyping = useCallback(async () => {
     if (!soundEnabled) {
@@ -244,8 +244,8 @@ export function useShellSound() {
   }, [startAmbient, stopAllMedia]);
 
   const playDone = useCallback(() => {
-    playSystem();
-  }, [playSystem]);
+    // Intentionally unused: no cue after bot finishes (avoids second sound).
+  }, []);
 
   return {
     soundEnabled,
@@ -253,7 +253,8 @@ export function useShellSound() {
     unlock,
     startAmbient,
     playSend,
-    playSystem,
+    startUserPromptTypingSound,
+    stopUserPromptTypingSound,
     playDone,
     startTyping,
     stopTyping,

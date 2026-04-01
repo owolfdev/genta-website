@@ -20,6 +20,9 @@ const terminalFont = Share_Tech_Mono({
 const USER_PREFIX = "> ";
 const SYSTEM_PREFIX = "# ";
 
+/** Prompts shorter than this are revealed character-by-character with digital-text audio. */
+const SHORT_PROMPT_CHAR_MAX = 48;
+
 export default function Home() {
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
@@ -31,29 +34,74 @@ export default function Home() {
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [draftBotText, setDraftBotText] = useState("");
+  const [revealingUserPrompt, setRevealingUserPrompt] = useState(false);
+  const [draftUserText, setDraftUserText] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
-  const { soundEnabled, toggleSoundEnabled, unlock, playSend, playDone, startTyping, stopTyping } =
-    useShellSound();
+  const inputRef = useRef<HTMLInputElement>(null);
+  const {
+    soundEnabled,
+    toggleSoundEnabled,
+    unlock,
+    playSend,
+    startUserPromptTypingSound,
+    stopUserPromptTypingSound,
+    startTyping,
+    stopTyping,
+  } = useShellSound();
 
-  const canSubmit = useMemo(() => input.trim().length > 0 && !isTyping, [input, isTyping]);
+  const canSubmit = useMemo(
+    () => input.trim().length > 0 && !isTyping && !revealingUserPrompt,
+    [input, isTyping, revealingUserPrompt],
+  );
 
   useEffect(() => {
     if (!scrollRef.current) {
       return;
     }
     scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-  }, [messages, draftBotText]);
+  }, [messages, draftBotText, draftUserText]);
+
+  useEffect(() => {
+    inputRef.current?.focus({ preventScroll: true });
+  }, []);
+
+  useEffect(() => {
+    if (isTyping || revealingUserPrompt) {
+      return;
+    }
+    const id = window.setTimeout(() => {
+      inputRef.current?.focus({ preventScroll: true });
+    }, 0);
+    return () => window.clearTimeout(id);
+  }, [isTyping, revealingUserPrompt]);
 
   const onSubmit = async (rawText: string) => {
     const text = rawText.trim();
-    if (!text || isTyping) {
+    if (!text || isTyping || revealingUserPrompt) {
       return;
     }
 
     await unlock();
     playSend();
-    setMessages((prev) => [...prev, { id: crypto.randomUUID(), role: "user", text }]);
     setInput("");
+
+    if (text.length < SHORT_PROMPT_CHAR_MAX) {
+      setRevealingUserPrompt(true);
+      setDraftUserText("");
+      await startUserPromptTypingSound();
+      const cps = 18;
+      const delayMs = Math.max(12, Math.round(1000 / cps));
+      for (let i = 1; i <= text.length; i += 1) {
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+        setDraftUserText(text.slice(0, i));
+      }
+      stopUserPromptTypingSound();
+      setMessages((prev) => [...prev, { id: crypto.randomUUID(), role: "user", text }]);
+      setDraftUserText("");
+      setRevealingUserPrompt(false);
+    } else {
+      setMessages((prev) => [...prev, { id: crypto.randomUUID(), role: "user", text }]);
+    }
 
     const responseText = getMockResponse(text);
     setIsTyping(true);
@@ -70,7 +118,6 @@ export default function Home() {
       { id: crypto.randomUUID(), role: "bot", text: responseText },
     ]);
     stopTyping();
-    playDone();
     setDraftBotText("");
     setIsTyping(false);
   };
@@ -78,8 +125,9 @@ export default function Home() {
   useEffect(() => {
     return () => {
       stopTyping();
+      stopUserPromptTypingSound();
     };
-  }, [stopTyping]);
+  }, [stopTyping, stopUserPromptTypingSound]);
 
   return (
     <div
@@ -122,6 +170,14 @@ export default function Home() {
             </p>
           ))}
 
+          {revealingUserPrompt && (
+            <p className="mb-2.5">
+              <span>{USER_PREFIX}</span>
+              <span>{draftUserText}</span>
+              <span className="blink">▌</span>
+            </p>
+          )}
+
           {isTyping && (
             <p className="mb-2.5">
               <span className="ml-[2ch] text-[#b8892e]">
@@ -145,18 +201,20 @@ export default function Home() {
           <div className="flex items-center gap-3">
             <span className="text-[#ffcc66]">{USER_PREFIX}</span>
             <input
+              ref={inputRef}
               id="chat-input"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onFocus={() => {
                 void unlock();
               }}
+              disabled={isTyping || revealingUserPrompt}
               placeholder="Type a prompt and press Enter..."
-              className="w-full bg-transparent text-[#ffcc66] outline-none placeholder:text-[#b8892e]/60"
+              className="w-full bg-transparent text-[#ffcc66] outline-none placeholder:text-[#b8892e]/60 disabled:opacity-40"
             />
             <button
               type="submit"
-              disabled={!canSubmit}
+              disabled={!canSubmit || revealingUserPrompt}
               className="rounded border border-[#b8892e] px-3 py-1 text-xs uppercase tracking-wider text-[#ffcc66] transition disabled:cursor-not-allowed disabled:opacity-40"
             >
               Send
