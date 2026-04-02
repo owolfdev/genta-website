@@ -92,6 +92,10 @@ function BotMessageBody({ raw, streaming }: { raw: string; streaming?: boolean }
               {SYSTEM_PREFIX}
               <span className="text-[#7aab8a] [text-shadow:0_0_8px_rgba(122,171,138,0.42)]">{seg.text}</span>
             </span>
+          ) : seg.kind === "ascii" ? (
+            <pre className="my-1 ml-[1ch] max-w-full overflow-x-auto border-l-2 border-[#3d6b62] pl-2 font-[inherit] text-[0.92em] leading-tight text-[#7dd3c0] whitespace-pre [text-shadow:0_0_6px_rgba(125,211,192,0.38)]">
+              {seg.text}
+            </pre>
           ) : (
             <span className="text-[#b8892e]">{seg.text}</span>
           )}
@@ -124,6 +128,7 @@ export default function Home() {
     stopUserPromptTypingSound,
     startBotThinkingSound,
     stopBotThinkingSound,
+    playAsciiDrawDoneSound,
     startStreamTypingSound,
     stopTyping,
   } = useShellSound();
@@ -199,6 +204,9 @@ export default function Home() {
         onRevealSoundKind: (kind) => {
           void startStreamTypingSound(kind);
         },
+        onAfterAsciiSegment: () => {
+          void playAsciiDrawDoneSound();
+        },
         onComplete: () => {
           stopBotThinkingSound();
           stopTyping();
@@ -209,7 +217,7 @@ export default function Home() {
       const raw = botBufferRef.current.trim();
       return raw ? botBufferRef.current : "(empty response)";
     },
-    [startStreamTypingSound, stopBotThinkingSound, stopTyping],
+    [playAsciiDrawDoneSound, startStreamTypingSound, stopBotThinkingSound, stopTyping],
   );
 
   const revealStaticAssistantText = useCallback(
@@ -227,13 +235,16 @@ export default function Home() {
         onRevealSoundKind: (kind) => {
           void startStreamTypingSound(kind);
         },
+        onAfterAsciiSegment: () => {
+          void playAsciiDrawDoneSound();
+        },
         onComplete: () => {
           stopBotThinkingSound();
           stopTyping();
         },
       });
     },
-    [startStreamTypingSound, stopBotThinkingSound, stopTyping],
+    [playAsciiDrawDoneSound, startStreamTypingSound, stopBotThinkingSound, stopTyping],
   );
 
   useEffect(() => {

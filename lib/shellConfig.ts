@@ -2,8 +2,8 @@
  * Terminal shell UI copy and static labels.
  * Prefer editing this file over hunting through components.
  *
- * Assistant inline “system” styling (teal / `# `) is driven by `@system` / `@end` in the
- * model reply — see `lib/botProtocol.ts`.
+ * Protocol markup in assistant replies: `@system` / `@end` (teal `# `), `@ascii-draw` / `@end`
+ * (mint `<pre>` + ascii SFX) — see `lib/botProtocol.ts`.
  */
 export const SHELL_UI = {
   /** Top bar title (monospace header). */

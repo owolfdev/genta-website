@@ -1,4 +1,4 @@
-import { activeStreamSoundKind } from "./botProtocol";
+import { activeStreamSoundKind, type StreamSoundKind } from "./botProtocol";
 
 /**
  * Bot output pacing: faster than user prompt (18 cps in page.tsx).
@@ -39,13 +39,15 @@ export async function revealBufferedBotText(opts: {
   isStreamDone: () => boolean;
   setVisible: (s: string) => void;
   onFirstChar?: () => void;
-  /** Fires when `@system` / `@end` boundaries change the effective stream kind (for SFX). */
-  onRevealSoundKind?: (kind: "bot" | "system") => void;
+  /** Fires when protocol boundaries change the effective stream kind (for SFX). */
+  onRevealSoundKind?: (kind: StreamSoundKind) => void;
+  /** After leaving an `@ascii-draw` block (aligned with Video `asciiDone`). */
+  onAfterAsciiSegment?: () => void;
   onComplete?: () => void;
 }): Promise<string> {
   let displayed = "";
   let firstCharHandled = false;
-  let lastSoundKind: "bot" | "system" = "bot";
+  let lastSoundKind: StreamSoundKind = "bot";
 
   while (true) {
     const buffer = opts.getBuffer();
@@ -68,6 +70,9 @@ export async function revealBufferedBotText(opts: {
         lastSoundKind = kind;
         opts.onRevealSoundKind?.(kind);
       } else if (kind !== lastSoundKind) {
+        if (lastSoundKind === "ascii") {
+          opts.onAfterAsciiSegment?.();
+        }
         lastSoundKind = kind;
         opts.onRevealSoundKind?.(kind);
       }
@@ -76,6 +81,9 @@ export async function revealBufferedBotText(opts: {
     }
   }
 
+  if (lastSoundKind === "ascii") {
+    opts.onAfterAsciiSegment?.();
+  }
   opts.onComplete?.();
   return opts.getBuffer();
 }

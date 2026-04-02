@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
+import type { StreamSoundKind } from "./botProtocol";
 import { SHELL_SOUNDS } from "./soundConfig";
 
 type AudioState = {
@@ -9,6 +10,8 @@ type AudioState = {
   botThinkingEl: HTMLAudioElement | null;
   botTypingEl: HTMLAudioElement | null;
   systemStreamTypingEl: HTMLAudioElement | null;
+  asciiStreamTypingEl: HTMLAudioElement | null;
+  asciiDrawDoneEl: HTMLAudioElement | null;
   userPromptTypingEl: HTMLAudioElement | null;
 };
 
@@ -27,6 +30,15 @@ function beep(ctx: AudioContext, frequency: number, durationMs: number, gainValu
 
   osc.start(now);
   osc.stop(now + durationMs / 1000);
+}
+
+function pauseStreamTypers(state: AudioState) {
+  for (const el of [state.botTypingEl, state.systemStreamTypingEl, state.asciiStreamTypingEl]) {
+    if (el && !el.paused) {
+      el.pause();
+      el.currentTime = 0;
+    }
+  }
 }
 
 export function useShellSound() {
@@ -48,6 +60,8 @@ export function useShellSound() {
         botThinkingEl: null,
         botTypingEl: null,
         systemStreamTypingEl: null,
+        asciiStreamTypingEl: null,
+        asciiDrawDoneEl: null,
         userPromptTypingEl: null,
       };
     }
@@ -112,6 +126,20 @@ export function useShellSound() {
       SHELL_SOUNDS.systemStreamTyping.loop,
       SHELL_SOUNDS.systemStreamTyping.volume,
     );
+    state.asciiStreamTypingEl = syncEl(
+      state.asciiStreamTypingEl,
+      SHELL_SOUNDS.asciiStreamTyping.src,
+      SHELL_SOUNDS.asciiStreamTyping.volume,
+      SHELL_SOUNDS.asciiStreamTyping.loop,
+      SHELL_SOUNDS.asciiStreamTyping.volume,
+    );
+    state.asciiDrawDoneEl = syncEl(
+      state.asciiDrawDoneEl,
+      SHELL_SOUNDS.asciiDrawDone.src,
+      SHELL_SOUNDS.asciiDrawDone.volume,
+      SHELL_SOUNDS.asciiDrawDone.loop,
+      SHELL_SOUNDS.asciiDrawDone.volume,
+    );
     state.userPromptTypingEl = syncEl(
       state.userPromptTypingEl,
       SHELL_SOUNDS.userPromptTyping.src,
@@ -138,7 +166,14 @@ export function useShellSound() {
     if (!state) {
       return;
     }
-    for (const el of [state.botThinkingEl, state.botTypingEl, state.systemStreamTypingEl, state.userPromptTypingEl]) {
+    for (const el of [
+      state.botThinkingEl,
+      state.botTypingEl,
+      state.systemStreamTypingEl,
+      state.asciiStreamTypingEl,
+      state.asciiDrawDoneEl,
+      state.userPromptTypingEl,
+    ]) {
       if (!el) {
         continue;
       }
@@ -190,14 +225,7 @@ export function useShellSound() {
     if (!state?.botThinkingEl) {
       return;
     }
-    if (state.botTypingEl && !state.botTypingEl.paused) {
-      state.botTypingEl.pause();
-      state.botTypingEl.currentTime = 0;
-    }
-    if (state.systemStreamTypingEl && !state.systemStreamTypingEl.paused) {
-      state.systemStreamTypingEl.pause();
-      state.systemStreamTypingEl.currentTime = 0;
-    }
+    pauseStreamTypers(state);
     state.botThinkingEl.currentTime = 0;
     try {
       await state.botThinkingEl.play();
@@ -215,8 +243,24 @@ export function useShellSound() {
     state.botThinkingEl.currentTime = 0;
   }, []);
 
+  const playAsciiDrawDoneSound = useCallback(async () => {
+    if (!soundEnabled) {
+      return;
+    }
+    const state = await ensureMedia();
+    if (!state?.asciiDrawDoneEl) {
+      return;
+    }
+    state.asciiDrawDoneEl.currentTime = 0;
+    try {
+      await state.asciiDrawDoneEl.play();
+    } catch {
+      /* ignore */
+    }
+  }, [ensureMedia, soundEnabled]);
+
   const startStreamTypingSound = useCallback(
-    async (kind: "bot" | "system") => {
+    async (kind: StreamSoundKind) => {
       if (!soundEnabled) {
         return;
       }
@@ -232,49 +276,55 @@ export function useShellSound() {
         state.botThinkingEl.pause();
         state.botThinkingEl.currentTime = 0;
       }
-      if (kind === "bot") {
-        if (state.systemStreamTypingEl && !state.systemStreamTypingEl.paused) {
-          state.systemStreamTypingEl.pause();
-          state.systemStreamTypingEl.currentTime = 0;
+
+      pauseStreamTypers(state);
+
+      const tryPlay = async (el: HTMLAudioElement | null) => {
+        if (!el) {
+          return false;
         }
+        el.currentTime = 0;
+        try {
+          await el.play();
+          return true;
+        } catch {
+          return false;
+        }
+      };
+
+      if (kind === "bot") {
         if (state.botTypingEl && !state.botTypingEl.paused) {
           return;
         }
-        if (state.botTypingEl) {
-          state.botTypingEl.currentTime = 0;
-          try {
-            await state.botTypingEl.play();
-            return;
-          } catch {
-            /* fall through to synth */
-          }
+        if (await tryPlay(state.botTypingEl)) {
+          return;
+        }
+      } else if (kind === "system") {
+        if (state.systemStreamTypingEl && !state.systemStreamTypingEl.paused) {
+          return;
+        }
+        if (await tryPlay(state.systemStreamTypingEl)) {
+          return;
         }
       } else {
-        if (state.botTypingEl && !state.botTypingEl.paused) {
-          state.botTypingEl.pause();
-          state.botTypingEl.currentTime = 0;
-        }
-        if (state.systemStreamTypingEl && !state.systemStreamTypingEl.paused) {
+        if (state.asciiStreamTypingEl && !state.asciiStreamTypingEl.paused) {
           return;
         }
-        if (state.systemStreamTypingEl) {
-          state.systemStreamTypingEl.currentTime = 0;
-          try {
-            await state.systemStreamTypingEl.play();
-            return;
-          } catch {
-            /* fall through to softer synth */
-          }
+        if (await tryPlay(state.asciiStreamTypingEl)) {
+          return;
         }
       }
+
       if (state.ctx.state !== "running" || state.typingTimer != null) {
         return;
       }
-      const vol = kind === "system" ? 0.005 : 0.008;
+      const vol = kind === "system" ? 0.005 : kind === "ascii" ? 0.006 : 0.008;
+      const freqBase = kind === "system" ? 180 : kind === "ascii" ? 200 : 220;
+      const spread = kind === "ascii" ? 100 : 120;
       state.typingTimer = window.setInterval(() => {
-        const freq = kind === "system" ? 180 + Math.random() * 80 : 220 + Math.random() * 120;
+        const freq = freqBase + Math.random() * spread;
         beep(state.ctx, freq, 20, vol);
-      }, kind === "system" ? 42 : 38);
+      }, kind === "system" ? 42 : kind === "ascii" ? 40 : 38);
     },
     [ensureMedia, soundEnabled],
   );
@@ -291,14 +341,7 @@ export function useShellSound() {
       state.botThinkingEl.pause();
       state.botThinkingEl.currentTime = 0;
     }
-    if (state.botTypingEl && !state.botTypingEl.paused) {
-      state.botTypingEl.pause();
-      state.botTypingEl.currentTime = 0;
-    }
-    if (state.systemStreamTypingEl && !state.systemStreamTypingEl.paused) {
-      state.systemStreamTypingEl.pause();
-      state.systemStreamTypingEl.currentTime = 0;
-    }
+    pauseStreamTypers(state);
     if (state.typingTimer == null) {
       return;
     }
@@ -330,6 +373,7 @@ export function useShellSound() {
     playDone,
     startBotThinkingSound,
     stopBotThinkingSound,
+    playAsciiDrawDoneSound,
     startStreamTypingSound,
     startTyping,
     stopTyping,

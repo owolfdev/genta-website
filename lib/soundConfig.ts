@@ -17,6 +17,18 @@ export const SHELL_SOUNDS = {
     volume: 0.32,
     loop: true,
   },
+  /** Looped while `@ascii-draw`… body streams in (Remotion: AUDIO_ASSETS.asciiDraw). */
+  asciiStreamTyping: {
+    src: "/audio/system/ascii-draw-hi.mp3",
+    volume: 0.42,
+    loop: true,
+  },
+  /** One-shot when an `@ascii-draw` block ends (Remotion: AUDIO_ASSETS.asciiDone). */
+  asciiDrawDone: {
+    src: "/audio/bot/beepboop2.mp3",
+    volume: 0.4,
+    loop: false,
+  },
   /** Looped while a short user prompt is typed into the transcript. */
   userPromptTyping: {
     src: "/audio/usr/binary.mp3",

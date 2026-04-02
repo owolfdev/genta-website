@@ -1,24 +1,27 @@
 /**
- * Inline “system” voice inside an assistant stream (teal / # styling), controlled by the model.
+ * Inline styled segments inside an assistant stream (markers stripped for display).
  *
  * Grammar (line-oriented):
- * - Block: a line exactly `@system`, then body lines until a line exactly `@end` (body is system-styled).
- *   Put a newline after `@end` before any further assistant (amber) content so it doesn’t run into the block.
- * - Single line: a line starting with `@system ` — the rest of that line is system-styled; then bot resumes.
+ * - `@system` … `@end` — teal “# ” system voice (see below).
+ * - `@ascii-draw` … `@end` — ASCII art / path / block: monospace mint, dedicated SFX (Video: asciiDraw + asciiDone).
+ * - Single-line system: `@system ` + rest of line.
  *
- * The shell also inserts a newline between rendered segments when both system and bot text appear in one reply.
+ * After `@end`, start further content on a new line. The UI inserts `\n` between segments.
  *
- * Markers are stripped from the visible transcript; they remain in stored `role: "bot"` text for re-parse,
- * or use `stripBotProtocolForHistory()` before sending to APIs.
+ * Markers stay in stored `role: "bot"` text for re-parse; use `stripBotProtocolForHistory()` for APIs.
  */
 
-export type BotStreamSegment = { kind: "bot" | "system"; text: string };
+export type StreamSoundKind = "bot" | "system" | "ascii";
 
-const BLOCK_OPEN = "@system";
+export type BotStreamSegment = { kind: StreamSoundKind; text: string };
+
+const BLOCK_SYSTEM = "@system";
+const BLOCK_ASCII = "@ascii-draw";
 const BLOCK_CLOSE = "@end";
-const LINE_PREFIX = "@system ";
+const LINE_PREFIX_SYSTEM = "@system ";
 
-/** Remove a trailing partial directive line (streaming `@sy…` / `@end`). */
+const INCOMPLETE_DIRECTIVES: readonly string[] = [BLOCK_SYSTEM, BLOCK_ASCII, BLOCK_CLOSE];
+
 function normalizeLine(line: string): string {
   return line.replace(/\r$/, "");
 }
@@ -32,7 +35,7 @@ export function stripIncompleteBotProtocol(raw: string): string {
   if (!lastLine.startsWith("@")) {
     return raw;
   }
-  for (const d of [BLOCK_OPEN, BLOCK_CLOSE] as const) {
+  for (const d of INCOMPLETE_DIRECTIVES) {
     if (d.startsWith(lastLine) && d !== lastLine) {
       return nl === -1 ? "" : raw.slice(0, nl);
     }
@@ -48,7 +51,8 @@ export function parseBotProtocolToSegments(raw: string): BotStreamSegment[] {
   const out: BotStreamSegment[] = [];
   let botBuf = "";
   let systemBuf = "";
-  let mode: "bot" | "block_system" = "bot";
+  let asciiBuf = "";
+  let mode: "bot" | "block_system" | "block_ascii" = "bot";
 
   const flushBot = () => {
     if (botBuf.length > 0) {
@@ -62,39 +66,60 @@ export function parseBotProtocolToSegments(raw: string): BotStreamSegment[] {
       systemBuf = "";
     }
   };
+  const flushAscii = () => {
+    if (asciiBuf.length > 0) {
+      out.push({ kind: "ascii", text: asciiBuf });
+      asciiBuf = "";
+    }
+  };
 
   for (const line of lines) {
     const l = normalizeLine(line);
     if (mode === "bot") {
-      if (l === BLOCK_OPEN) {
+      if (l === BLOCK_SYSTEM) {
         flushBot();
         mode = "block_system";
         continue;
       }
-      if (l.startsWith(LINE_PREFIX)) {
+      if (l === BLOCK_ASCII) {
         flushBot();
-        out.push({ kind: "system", text: l.slice(LINE_PREFIX.length) });
+        mode = "block_ascii";
+        continue;
+      }
+      if (l.startsWith(LINE_PREFIX_SYSTEM)) {
+        flushBot();
+        out.push({ kind: "system", text: l.slice(LINE_PREFIX_SYSTEM.length) });
         continue;
       }
       botBuf += (botBuf ? "\n" : "") + l;
-    } else {
+    } else if (mode === "block_system") {
       if (l === BLOCK_CLOSE) {
         flushSystem();
         mode = "bot";
         continue;
       }
       systemBuf += (systemBuf ? "\n" : "") + l;
+    } else {
+      if (l === BLOCK_CLOSE) {
+        flushAscii();
+        mode = "bot";
+        continue;
+      }
+      asciiBuf += (asciiBuf ? "\n" : "") + l;
     }
   }
   flushBot();
   if (mode === "block_system") {
     flushSystem();
   }
+  if (mode === "block_ascii") {
+    flushAscii();
+  }
   return out;
 }
 
-/** Which stream typing sound to use for the character at the end of the visible raw buffer. */
-export function activeStreamSoundKind(raw: string): "bot" | "system" {
+/** Which stream typing sound matches the character at the end of the visible raw buffer. */
+export function activeStreamSoundKind(raw: string): StreamSoundKind {
   const cleaned = stripIncompleteBotProtocol(raw);
   const segs = parseBotProtocolToSegments(cleaned);
   if (segs.length === 0) {
