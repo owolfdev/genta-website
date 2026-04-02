@@ -43,7 +43,7 @@ function pauseStreamTypers(state: AudioState) {
 
 export function useShellSound() {
   const stateRef = useRef<AudioState | null>(null);
-  const [soundEnabled, setSoundEnabled] = useState(true);
+  const [soundEnabled, setSoundEnabled] = useState(false);
 
   const getOrCreate = useCallback(() => {
     if (typeof window === "undefined") {
