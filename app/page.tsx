@@ -10,6 +10,7 @@ import {
 import { conversationIdFromChatiqJson, welcomeTextFromChatiqJson } from "@/lib/chatiqWelcomeResponse";
 import { consumeChatiqSseStream } from "@/lib/chatiqStream";
 import { revealBufferedBotText } from "@/lib/revealBotBuffer";
+import { WaitlistGateScrim, WaitlistOverlay } from "@/components/WaitlistOverlay";
 import { ASSISTANT_WELCOME_FALLBACK_TEXT, SHELL_UI } from "@/lib/shellConfig";
 import { useShellSound } from "@/lib/useShellSound";
 
@@ -93,7 +94,7 @@ function BotMessageBody({ raw, streaming }: { raw: string; streaming?: boolean }
               <span className="text-[#7aab8a] [text-shadow:0_0_8px_rgba(122,171,138,0.42)]">{seg.text}</span>
             </span>
           ) : seg.kind === "ascii" ? (
-            <pre className="my-1 ml-[1ch] max-w-full overflow-x-auto border-l-2 border-[#3d6b62] pl-2 font-[inherit] text-[0.92em] leading-tight text-[#7dd3c0] whitespace-pre [text-shadow:0_0_6px_rgba(125,211,192,0.38)]">
+            <pre className="my-1 max-w-full overflow-x-auto font-[inherit] text-[0.92em] leading-tight text-[#7dd3c0] whitespace-pre [text-shadow:0_0_6px_rgba(125,211,192,0.38)]">
               {seg.text}
             </pre>
           ) : (
@@ -107,7 +108,10 @@ function BotMessageBody({ raw, streaming }: { raw: string; streaming?: boolean }
 }
 
 export default function Home() {
+  const [waitlistGateBlocksChat, setWaitlistGateBlocksChat] = useState(true);
   const conversationIdRef = useRef<string | null>(null);
+  /** Boot welcome row removed from the log on the user’s first message (thread continues via `conversation_id`). */
+  const welcomeMessageIdRef = useRef<string | null>(null);
   const botBufferRef = useRef("");
   const streamDoneRef = useRef(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -346,7 +350,9 @@ export default function Home() {
         setIsTyping(false);
         return;
       }
-      setMessages((prev) => [...prev, { id: crypto.randomUUID(), role: "bot", text: responseText }]);
+      const welcomeId = crypto.randomUUID();
+      welcomeMessageIdRef.current = welcomeId;
+      setMessages((prev) => [...prev, { id: welcomeId, role: "bot", text: responseText }]);
       stopTyping();
       stopBotThinkingSound();
       setDraftBotText("");
@@ -371,6 +377,12 @@ export default function Home() {
 
     stickToBottomRef.current = true;
 
+    const welcomeId = welcomeMessageIdRef.current;
+    if (welcomeId) {
+      welcomeMessageIdRef.current = null;
+      setMessages((prev) => prev.filter((m) => m.id !== welcomeId));
+    }
+
     await unlock();
     playSend();
     setInput("");
@@ -394,7 +406,9 @@ export default function Home() {
     }
 
     const priorHistory = buildChatiqHistory(
-      messages.filter((m) => m.role === "user" || m.role === "bot"),
+      messages
+        .filter((m) => m.role === "user" || m.role === "bot")
+        .filter((m) => !welcomeId || m.id !== welcomeId),
     );
 
     setIsTyping(true);
@@ -460,10 +474,14 @@ export default function Home() {
     <div
       className={`${terminalFont.className} relative h-[100dvh] overflow-hidden bg-[#080602] text-[#ffcc66]`}
     >
+      <WaitlistGateScrim active={waitlistGateBlocksChat} />
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_85%_75%_at_50%_45%,transparent_40%,rgba(0,0,0,0.55)_100%),radial-gradient(ellipse_100%_60%_at_50%_50%,rgba(255,190,90,0.06),transparent_55%)]" />
       <div className="scanlines pointer-events-none absolute inset-0 opacity-20" />
 
-      <main className="relative z-10 mx-auto box-border flex h-full min-h-0 w-full max-w-5xl flex-col px-6 pb-6 pt-6 sm:px-10 sm:pb-8 sm:pt-10">
+      <main
+        inert={waitlistGateBlocksChat ? true : undefined}
+        className="relative z-10 mx-auto box-border flex h-full min-h-0 w-full max-w-5xl flex-col px-6 pb-6 pt-6 sm:px-10 sm:pb-8 sm:pt-10"
+      >
         <header className="mb-5 shrink-0 flex items-center justify-between gap-3 border-b border-[#b8892e] pb-3 text-xs tracking-[0.25em] text-[#b8892e] sm:text-sm">
           <span>{SHELL_UI.headerTitle}</span>
           <button
@@ -483,7 +501,7 @@ export default function Home() {
           className="genta-chat-scroll min-h-0 flex-1 overflow-y-auto overscroll-y-contain whitespace-pre-wrap wrap-break-word pr-1 text-[17px] leading-relaxed [text-shadow:0_0_8px_rgba(255,204,102,0.62)]"
         >
           {messages.map((m) => (
-            <p className="mb-2.5" key={m.id}>
+            <div className="mb-2.5" key={m.id}>
               {m.role === "user" ? (
                 <>
                   <span>{USER_PREFIX}</span>
@@ -495,28 +513,28 @@ export default function Home() {
                   <span className="text-[#7aab8a]">{m.text}</span>
                 </>
               ) : (
-                <span className="ml-[2ch] inline">
+                <div className="ml-[2ch]">
                   <BotMessageBody raw={m.text} />
-                </span>
+                </div>
               )}
-            </p>
+            </div>
           ))}
 
           {revealingUserPrompt && (
-            <p className="mb-2.5">
+            <div className="mb-2.5">
               <span>{USER_PREFIX}</span>
               <span>{draftUserText}</span>
               <span className="blink">▌</span>
-            </p>
+            </div>
           )}
 
           {isTyping && (
-            <p className="mb-2.5">
-              <span className="ml-[2ch] inline text-[#b8892e]">
+            <div className="mb-2.5">
+              <div className="ml-[2ch] text-[#b8892e]">
                 <BotMessageBody raw={draftBotText} streaming={true} />
                 <span className="blink">▌</span>
-              </span>
-            </p>
+              </div>
+            </div>
           )}
         </section>
 
@@ -554,6 +572,11 @@ export default function Home() {
           </div>
         </form>
       </main>
+
+      <WaitlistOverlay
+        className={terminalFont.className}
+        onBlockingChange={setWaitlistGateBlocksChat}
+      />
     </div>
   );
 }
