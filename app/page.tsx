@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Share_Tech_Mono } from "next/font/google";
 import {
   parseBotProtocolToSegments,
@@ -129,12 +129,13 @@ export default function Home() {
   const stickToBottomRef = useRef(true);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     try {
       if (
         sessionStorage.getItem(WAITLIST_OVERLAY.sessionStorageKey) ===
         WAITLIST_GATE_SESSION_VALUE
       ) {
+        // Before paint — avoids a flash of the gate when the tab already dismissed it.
         setWaitlistOpen(false);
       }
     } catch {
