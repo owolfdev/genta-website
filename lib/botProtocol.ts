@@ -1,3 +1,5 @@
+import { stripIncompletePauseInRaw, stripPauseDirectivesFromText } from "./botDirectives";
+
 /**
  * Inline styled segments inside an assistant stream (markers stripped for display).
  *
@@ -5,6 +7,9 @@
  * - `@system` … `@end` — teal “# ” system voice (see below).
  * - `@ascii-draw` … `@end` — ASCII art / path / block: monospace mint, dedicated SFX (Video: asciiDraw + asciiDone).
  * - Single-line system: `@system ` + rest of line.
+ *
+ * Inline (inside bot text segments):
+ * - `@pause[ms]` — non-displayed pause during reveal (`ms` = milliseconds, clamped). Example: `@pause[1000]` ≈ one second.
  *
  * After `@end`, start further content on a new line. The UI inserts `\n` between segments.
  *
@@ -32,15 +37,16 @@ export function stripIncompleteBotProtocol(raw: string): string {
   }
   const nl = raw.lastIndexOf("\n");
   const lastLine = normalizeLine(nl === -1 ? raw : raw.slice(nl + 1));
-  if (!lastLine.startsWith("@")) {
-    return raw;
-  }
-  for (const d of INCOMPLETE_DIRECTIVES) {
-    if (d.startsWith(lastLine) && d !== lastLine) {
-      return nl === -1 ? "" : raw.slice(0, nl);
+  let base = raw;
+  if (lastLine.startsWith("@")) {
+    for (const d of INCOMPLETE_DIRECTIVES) {
+      if (d.startsWith(lastLine) && d !== lastLine) {
+        base = nl === -1 ? "" : raw.slice(0, nl);
+        break;
+      }
     }
   }
-  return raw;
+  return stripIncompletePauseInRaw(base);
 }
 
 /**
@@ -131,7 +137,7 @@ export function activeStreamSoundKind(raw: string): StreamSoundKind {
 /** Flatten to plain text for chat history / APIs (no protocol lines). */
 export function stripBotProtocolForHistory(raw: string): string {
   return parseBotProtocolToSegments(raw)
-    .map((s) => s.text)
+    .map((s) => stripPauseDirectivesFromText(s.text))
     .join("\n")
     .trimEnd();
 }

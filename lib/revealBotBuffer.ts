@@ -1,3 +1,4 @@
+import { matchPauseDirectiveAt } from "./botDirectives";
 import { activeStreamSoundKind, type StreamSoundKind } from "./botProtocol";
 
 /**
@@ -30,9 +31,31 @@ function delayMsBeforeNextChar(visibleCount: number): number {
   return Math.max(floor, Math.round(1000 / cps));
 }
 
+function delay(ms: number, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) {
+      reject(new DOMException("Aborted", "AbortError"));
+      return;
+    }
+    const onAbort = () => {
+      clearTimeout(t);
+      reject(new DOMException("Aborted", "AbortError"));
+    };
+    const t = window.setTimeout(() => {
+      signal?.removeEventListener("abort", onAbort);
+      resolve();
+    }, ms);
+    signal?.addEventListener("abort", onAbort);
+  });
+}
+
+export type RevealAbortFinal = "buffer" | "visible";
+
 /**
  * Reveal text from a growing buffer (SSE) one character at a time.
  * Stops when the stream is done and all buffered characters have been shown.
+ * Pass `signal` to let the user interrupt; use `abortFinal` to choose whether the
+ * returned text is the full buffer (streaming) or only what had been revealed (static welcome).
  */
 export async function revealBufferedBotText(opts: {
   getBuffer: () => string;
@@ -44,46 +67,102 @@ export async function revealBufferedBotText(opts: {
   /** After leaving an `@ascii-draw` block (aligned with Video `asciiDone`). */
   onAfterAsciiSegment?: () => void;
   onComplete?: () => void;
+  signal?: AbortSignal;
+  /** On interrupt: full received buffer vs visible-only (welcome typing). */
+  abortFinal?: RevealAbortFinal;
 }): Promise<string> {
+  const abortFinal: RevealAbortFinal = opts.abortFinal ?? "buffer";
   let displayed = "";
   let firstCharHandled = false;
   let lastSoundKind: StreamSoundKind = "bot";
 
-  while (true) {
+  const abortAndFinish = (): string => {
     const buffer = opts.getBuffer();
-    const done = opts.isStreamDone();
-
-    if (done && displayed.length >= buffer.length) {
-      break;
-    }
-
-    if (displayed.length < buffer.length) {
-      await new Promise((resolve) => {
-        window.setTimeout(resolve, delayMsBeforeNextChar(displayed.length));
-      });
-      displayed = buffer.slice(0, displayed.length + 1);
-      opts.setVisible(displayed);
-      const kind = activeStreamSoundKind(displayed);
-      if (!firstCharHandled) {
-        firstCharHandled = true;
-        opts.onFirstChar?.();
-        lastSoundKind = kind;
-        opts.onRevealSoundKind?.(kind);
-      } else if (kind !== lastSoundKind) {
-        if (lastSoundKind === "ascii") {
-          opts.onAfterAsciiSegment?.();
-        }
-        lastSoundKind = kind;
-        opts.onRevealSoundKind?.(kind);
-      }
+    let out: string;
+    if (abortFinal === "visible") {
+      out = displayed;
     } else {
-      await new Promise((resolve) => window.setTimeout(resolve, 24));
+      out = buffer;
+      opts.setVisible(buffer);
     }
-  }
+    opts.onComplete?.();
+    return out;
+  };
 
-  if (lastSoundKind === "ascii") {
-    opts.onAfterAsciiSegment?.();
+  try {
+    while (true) {
+      if (opts.signal?.aborted) {
+        return abortAndFinish();
+      }
+
+      const buffer = opts.getBuffer();
+      const done = opts.isStreamDone();
+
+      if (done && displayed.length >= buffer.length) {
+        break;
+      }
+
+      if (displayed.length < buffer.length) {
+        const pauseHit = matchPauseDirectiveAt(buffer, displayed.length);
+        if (pauseHit) {
+          try {
+            await delay(pauseHit.ms, opts.signal);
+          } catch (e) {
+            if (e instanceof DOMException && e.name === "AbortError") {
+              return abortAndFinish();
+            }
+            throw e;
+          }
+          displayed = buffer.slice(0, displayed.length + pauseHit.len);
+          opts.setVisible(displayed);
+          // Do not fire onFirstChar here — pause is invisible; first real character should stop "thinking".
+          continue;
+        }
+
+        try {
+          await delay(delayMsBeforeNextChar(displayed.length), opts.signal);
+        } catch (e) {
+          if (e instanceof DOMException && e.name === "AbortError") {
+            return abortAndFinish();
+          }
+          throw e;
+        }
+        displayed = buffer.slice(0, displayed.length + 1);
+        opts.setVisible(displayed);
+        const kind = activeStreamSoundKind(displayed);
+        if (!firstCharHandled) {
+          firstCharHandled = true;
+          opts.onFirstChar?.();
+          lastSoundKind = kind;
+          opts.onRevealSoundKind?.(kind);
+        } else if (kind !== lastSoundKind) {
+          if (lastSoundKind === "ascii") {
+            opts.onAfterAsciiSegment?.();
+          }
+          lastSoundKind = kind;
+          opts.onRevealSoundKind?.(kind);
+        }
+      } else {
+        try {
+          await delay(24, opts.signal);
+        } catch (e) {
+          if (e instanceof DOMException && e.name === "AbortError") {
+            return abortAndFinish();
+          }
+          throw e;
+        }
+      }
+    }
+
+    if (lastSoundKind === "ascii") {
+      opts.onAfterAsciiSegment?.();
+    }
+    opts.onComplete?.();
+    return opts.getBuffer();
+  } catch (e) {
+    if (e instanceof DOMException && e.name === "AbortError") {
+      return abortAndFinish();
+    }
+    throw e;
   }
-  opts.onComplete?.();
-  return opts.getBuffer();
 }

@@ -8,6 +8,9 @@
 export const SHELL_UI = {
   /** Top bar title (monospace header). */
   headerTitle: "GENTA // LOCAL-FIRST MODEL-AGNOSTIC LLM TOOLING // STREAMING",
+  /** Stops streamed / revealed assistant output and re-enables input (see home-client). */
+  interruptOutputLabel: "Stop",
+  interruptOutputAriaLabel: "Stop assistant output",
 } as const;
 
 /**
@@ -29,7 +32,7 @@ export const WAITLIST_OVERLAY = {
   benefits: [
     "Private by default: run models locally; cloud stays optional.",
     "Your files and notes in one place, with retrieval you can trace.",
-    "Pick the stack that fits you—model-agnostic, built for real work.",
+    "Pick the stack that fits you: model-agnostic, built for real work.",
   ],
   emailLabel: "Email",
   emailPlaceholder: "you@domain.com",

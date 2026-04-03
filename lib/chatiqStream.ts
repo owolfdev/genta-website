@@ -11,10 +11,22 @@ export async function consumeChatiqSseStream(
   onDelta: (chunk: string) => void,
   onMeta?: (meta: StreamMeta) => void,
   onFirstContent?: () => void,
+  signal?: AbortSignal,
 ): Promise<string> {
   const reader = response.body?.getReader();
   if (!reader) {
     throw new Error("No response body");
+  }
+
+  const onAbort = () => {
+    reader.cancel().catch(() => {});
+  };
+  if (signal) {
+    if (signal.aborted) {
+      onAbort();
+      return "";
+    }
+    signal.addEventListener("abort", onAbort, { once: true });
   }
 
   const decoder = new TextDecoder();
@@ -22,8 +34,22 @@ export async function consumeChatiqSseStream(
   let full = "";
   let firstContentFired = false;
 
+  try {
   while (true) {
-    const { done, value } = await reader.read();
+    let readResult: ReadableStreamReadResult<Uint8Array>;
+    try {
+      readResult = await reader.read();
+    } catch (e) {
+      if (
+        signal?.aborted &&
+        e instanceof DOMException &&
+        e.name === "AbortError"
+      ) {
+        return full;
+      }
+      throw e;
+    }
+    const { done, value } = readResult;
     if (done) {
       break;
     }
@@ -63,4 +89,7 @@ export async function consumeChatiqSseStream(
   }
 
   return full;
+  } finally {
+    signal?.removeEventListener("abort", onAbort);
+  }
 }

@@ -7,7 +7,7 @@ import {
   stripBotProtocolForHistory,
   stripIncompleteBotProtocol,
 } from "@/lib/botProtocol";
-import { parseInlineBotDirectives } from "@/lib/botDirectives";
+import { parseInlineBotDirectives, type BotInlineChunk } from "@/lib/botDirectives";
 import { conversationIdFromChatiqJson, welcomeTextFromChatiqJson } from "@/lib/chatiqWelcomeResponse";
 import { consumeChatiqSseStream } from "@/lib/chatiqStream";
 import { revealBufferedBotText } from "@/lib/revealBotBuffer";
@@ -85,6 +85,35 @@ function buildChatiqHistory(messages: ChatMessage[]): { role: string; content: s
     }));
 }
 
+function InlineBotChunk({
+  chunk,
+  onDirective,
+}: {
+  chunk: BotInlineChunk;
+  onDirective?: (name: string) => void;
+}) {
+  if (chunk.kind === "text") {
+    return <Fragment>{chunk.text}</Fragment>;
+  }
+  if (chunk.kind === "pause") {
+    return null;
+  }
+  const known = BOT_INLINE_DIRECTIVES[chunk.name as keyof typeof BOT_INLINE_DIRECTIVES];
+  if (!known || !onDirective) {
+    return <Fragment>{chunk.raw}</Fragment>;
+  }
+  return (
+    <button
+      type="button"
+      onClick={() => onDirective(chunk.name)}
+      aria-label={known.ariaLabel}
+      className="mx-1 inline-block cursor-pointer rounded border border-[#4a6b58] px-2 py-0.5 text-[0.85em] tracking-[0.08em] text-[#7aab8a] underline decoration-[#4a6b58] underline-offset-2 transition hover:text-[#9fcbad]"
+    >
+      {known.label}
+    </button>
+  );
+}
+
 function BotMessageBody({
   raw,
   streaming,
@@ -114,26 +143,13 @@ function BotMessageBody({
             </pre>
           ) : (
             <span className="text-[#b8892e]">
-              {parseInlineBotDirectives(seg.text).map((chunk, chunkIdx) => {
-                if (chunk.kind === "text") {
-                  return <Fragment key={`txt-${i}-${chunkIdx}`}>{chunk.text}</Fragment>;
-                }
-                const known = BOT_INLINE_DIRECTIVES[chunk.name as keyof typeof BOT_INLINE_DIRECTIVES];
-                if (!known || !onDirective) {
-                  return <Fragment key={`raw-${i}-${chunkIdx}`}>{chunk.raw}</Fragment>;
-                }
-                return (
-                  <button
-                    key={`dir-${i}-${chunkIdx}`}
-                    type="button"
-                    onClick={() => onDirective(chunk.name)}
-                    aria-label={known.ariaLabel}
-                    className="mx-1 inline-block cursor-pointer rounded border border-[#4a6b58] px-2 py-0.5 text-[0.85em] tracking-[0.08em] text-[#7aab8a] underline decoration-[#4a6b58] underline-offset-2 transition hover:text-[#9fcbad]"
-                  >
-                    {known.label}
-                  </button>
-                );
-              })}
+              {parseInlineBotDirectives(seg.text).map((chunk, chunkIdx) => (
+                <InlineBotChunk
+                  key={`${i}-${chunkIdx}`}
+                  chunk={chunk}
+                  onDirective={onDirective}
+                />
+              ))}
             </span>
           )}
           {i < segs.length - 1 ? "\n" : null}
@@ -172,6 +188,8 @@ export default function HomeClient() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const stickToBottomRef = useRef(true);
   const inputRef = useRef<HTMLInputElement>(null);
+  /** Active welcome or chat assistant work (fetch + reveal); `abort()` stops output and re-enables input. */
+  const assistantAbortRef = useRef<AbortController | null>(null);
 
   const dismissWaitlist = useCallback(() => {
     try {
@@ -217,6 +235,10 @@ export default function HomeClient() {
     [input, isTyping, revealingUserPrompt],
   );
 
+  const interruptAssistant = useCallback(() => {
+    assistantAbortRef.current?.abort();
+  }, []);
+
   const updateStickToBottom = () => {
     const el = scrollRef.current;
     if (!el) {
@@ -249,8 +271,23 @@ export default function HomeClient() {
     return () => window.clearTimeout(id);
   }, [isTyping, revealingUserPrompt]);
 
+  useEffect(() => {
+    if (!isTyping || waitlistOpen) {
+      return;
+    }
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") {
+        return;
+      }
+      e.preventDefault();
+      interruptAssistant();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [isTyping, waitlistOpen, interruptAssistant]);
+
   const streamAssistantFromResponse = useCallback(
-    async (res: Response): Promise<string> => {
+    async (res: Response, signal: AbortSignal): Promise<string> => {
       botBufferRef.current = "";
       streamDoneRef.current = false;
       setDraftBotText("");
@@ -267,7 +304,18 @@ export default function HomeClient() {
                 conversationIdRef.current = meta.conversationId;
               }
             },
+            undefined,
+            signal,
           );
+        } catch (e) {
+          if (
+            signal.aborted &&
+            e instanceof DOMException &&
+            e.name === "AbortError"
+          ) {
+            return botBufferRef.current;
+          }
+          throw e;
         } finally {
           streamDoneRef.current = true;
         }
@@ -290,21 +338,26 @@ export default function HomeClient() {
           stopBotThinkingSound();
           stopTyping();
         },
+        signal,
+        abortFinal: "buffer",
       });
 
-      await Promise.all([streamTask, revealTask]);
-      const raw = botBufferRef.current.trim();
-      return raw ? botBufferRef.current : "(empty response)";
+      const [, revealed] = await Promise.all([streamTask, revealTask]);
+      if (signal.aborted && !revealed.trim()) {
+        return "";
+      }
+      const raw = revealed.trim();
+      return raw ? revealed : "(empty response)";
     },
     [playAsciiDrawDoneSound, startStreamTypingSound, stopBotThinkingSound, stopTyping],
   );
 
   const revealStaticAssistantText = useCallback(
-    async (fullText: string) => {
+    async (fullText: string, signal?: AbortSignal): Promise<string> => {
       botBufferRef.current = fullText;
       streamDoneRef.current = true;
       setDraftBotText("");
-      await revealBufferedBotText({
+      return await revealBufferedBotText({
         getBuffer: () => botBufferRef.current,
         isStreamDone: () => true,
         setVisible: setDraftBotText,
@@ -321,6 +374,8 @@ export default function HomeClient() {
           stopBotThinkingSound();
           stopTyping();
         },
+        signal,
+        abortFinal: "visible",
       });
     },
     [playAsciiDrawDoneSound, startStreamTypingSound, stopBotThinkingSound, stopTyping],
@@ -349,12 +404,30 @@ export default function HomeClient() {
 
     const runWelcome = async () => {
       const w = welcomeFlowRef.current;
+      const ac = new AbortController();
+      assistantAbortRef.current = ac;
       stickToBottomRef.current = true;
       setIsTyping(true);
       setDraftBotText("");
       await w.startBotThinkingSound();
 
       let responseText = "";
+      let revealedForMessage = "";
+
+      const finishWelcome = (messageText: string) => {
+        welcomeFlowRef.current.stopTyping();
+        welcomeFlowRef.current.stopBotThinkingSound();
+        setDraftBotText("");
+        setIsTyping(false);
+        assistantAbortRef.current = null;
+        if (!messageText.trim()) {
+          return;
+        }
+        const welcomeId = crypto.randomUUID();
+        welcomeMessageIdRef.current = welcomeId;
+        setMessages((prev) => [...prev, { id: welcomeId, role: "bot", text: messageText }]);
+      };
+
       try {
         const res = await fetch("/api/chat", {
           method: "POST",
@@ -364,13 +437,15 @@ export default function HomeClient() {
             message: "",
             stream: false,
           }),
+          signal: ac.signal,
         });
 
-        if (cancelled) {
+        if (cancelled || ac.signal.aborted) {
           w.stopTyping();
           w.stopBotThinkingSound();
           setDraftBotText("");
           setIsTyping(false);
+          assistantAbortRef.current = null;
           return;
         }
 
@@ -411,12 +486,20 @@ export default function HomeClient() {
               if (!responseText.trim()) {
                 responseText = ASSISTANT_WELCOME_FALLBACK_TEXT;
               }
-              await welcomeFlowRef.current.revealStaticAssistantText(responseText);
+              revealedForMessage = await welcomeFlowRef.current.revealStaticAssistantText(
+                responseText,
+                ac.signal,
+              );
               if (cancelled) {
-                welcomeFlowRef.current.stopTyping();
-                welcomeFlowRef.current.stopBotThinkingSound();
+                w.stopTyping();
+                w.stopBotThinkingSound();
                 setDraftBotText("");
                 setIsTyping(false);
+                assistantAbortRef.current = null;
+                return;
+              }
+              if (ac.signal.aborted) {
+                finishWelcome(revealedForMessage);
                 return;
               }
             }
@@ -428,6 +511,15 @@ export default function HomeClient() {
           welcomeFlowRef.current.stopBotThinkingSound();
           setDraftBotText("");
           setIsTyping(false);
+          assistantAbortRef.current = null;
+          return;
+        }
+        if (e instanceof DOMException && e.name === "AbortError") {
+          welcomeFlowRef.current.stopTyping();
+          welcomeFlowRef.current.stopBotThinkingSound();
+          setDraftBotText("");
+          setIsTyping(false);
+          assistantAbortRef.current = null;
           return;
         }
         welcomeFlowRef.current.stopBotThinkingSound();
@@ -441,20 +533,18 @@ export default function HomeClient() {
         welcomeFlowRef.current.stopBotThinkingSound();
         setDraftBotText("");
         setIsTyping(false);
+        assistantAbortRef.current = null;
         return;
       }
-      const welcomeId = crypto.randomUUID();
-      welcomeMessageIdRef.current = welcomeId;
-      setMessages((prev) => [...prev, { id: welcomeId, role: "bot", text: responseText }]);
-      welcomeFlowRef.current.stopTyping();
-      welcomeFlowRef.current.stopBotThinkingSound();
-      setDraftBotText("");
-      setIsTyping(false);
+
+      const toShow = revealedForMessage.trim() ? revealedForMessage : responseText;
+      finishWelcome(toShow);
     };
 
     void runWelcome();
     return () => {
       cancelled = true;
+      assistantAbortRef.current?.abort();
       welcomeFlowRef.current.stopTyping();
       welcomeFlowRef.current.stopBotThinkingSound();
     };
@@ -502,6 +592,10 @@ export default function HomeClient() {
         .filter((m) => !welcomeId || m.id !== welcomeId),
     );
 
+    const ac = new AbortController();
+    assistantAbortRef.current = ac;
+    botBufferRef.current = "";
+
     setIsTyping(true);
     setDraftBotText("");
     await startBotThinkingSound();
@@ -517,6 +611,7 @@ export default function HomeClient() {
           conversation_id: conversationIdRef.current,
           stream: true,
         }),
+        signal: ac.signal,
       });
 
       if (!res.ok) {
@@ -535,22 +630,33 @@ export default function HomeClient() {
         }
         responseText = `[error] ${errMsg}`;
       } else {
-        responseText = await streamAssistantFromResponse(res);
+        responseText = await streamAssistantFromResponse(res, ac.signal);
       }
     } catch (e) {
       stopBotThinkingSound();
       stopTyping();
-      responseText = `[error] ${e instanceof Error ? e.message : String(e)}`;
+      if (e instanceof DOMException && e.name === "AbortError") {
+        responseText = botBufferRef.current;
+      } else {
+        responseText = `[error] ${e instanceof Error ? e.message : String(e)}`;
+      }
+    } finally {
+      assistantAbortRef.current = null;
+    }
+
+    stopTyping();
+    stopBotThinkingSound();
+    setDraftBotText("");
+    setIsTyping(false);
+
+    if (!responseText.trim()) {
+      return;
     }
 
     setMessages((prev) => [
       ...prev,
       { id: crypto.randomUUID(), role: "bot", text: responseText },
     ]);
-    stopTyping();
-    stopBotThinkingSound();
-    setDraftBotText("");
-    setIsTyping(false);
   };
 
   useEffect(() => {
@@ -668,6 +774,16 @@ export default function HomeClient() {
               placeholder="Type a prompt and press Enter..."
               className="w-full bg-transparent text-[#ffcc66] outline-none placeholder:text-[#b8892e]/60 disabled:opacity-40"
             />
+            {isTyping ? (
+              <button
+                type="button"
+                onClick={interruptAssistant}
+                aria-label={SHELL_UI.interruptOutputAriaLabel}
+                className="rounded border border-[#c45c5c] px-3 py-1 text-xs uppercase tracking-wider text-[#f0a0a0] transition hover:border-[#e08080] hover:text-[#ffc8c8]"
+              >
+                {SHELL_UI.interruptOutputLabel}
+              </button>
+            ) : null}
             <button
               type="submit"
               disabled={!canSubmit || revealingUserPrompt}
