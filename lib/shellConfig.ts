@@ -30,9 +30,10 @@ export const WAITLIST_OVERLAY = {
   tagline:
     "Local-first AI assistant for desktop and mobile. Your chat, tools, and memory stay on your device by default—not on someone else’s server.",
   benefits: [
-    "Private by default: run models locally; cloud stays optional.",
-    "Your files and notes in one place, with retrieval you can trace.",
+    "Private by default: run models locally; cloud optional.",
+    // "Your files and notes in one place, with retrieval you can trace.",
     "Pick the stack that fits you: model-agnostic, built for real work.",
+    "Off grid: use Genta offline and on your own terms.",
   ],
   emailLabel: "Email",
   emailPlaceholder: "you@domain.com",
