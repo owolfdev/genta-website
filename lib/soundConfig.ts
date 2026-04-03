@@ -1,3 +1,10 @@
+/**
+ * Header sound toggle persistence (`localStorage`, not `sessionStorage`).
+ * - Missing key → default **off** (first visit).
+ * - `"1"` / `"0"` → user explicitly chose on/off (survives tab close and new tabs on same origin).
+ */
+export const SOUND_ENABLED_STORAGE_KEY = "genta-shell-sound-enabled";
+
 export const SHELL_SOUNDS = {
   /** Looped while waiting for the model (before first streamed token). */
   botThinking: {

@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { StreamSoundKind } from "./botProtocol";
-import { SHELL_SOUNDS } from "./soundConfig";
+import { SHELL_SOUNDS, SOUND_ENABLED_STORAGE_KEY } from "./soundConfig";
 
 type AudioState = {
   ctx: AudioContext;
@@ -32,6 +32,14 @@ function beep(ctx: AudioContext, frequency: number, durationMs: number, gainValu
   osc.stop(now + durationMs / 1000);
 }
 
+function persistSoundPref(on: boolean) {
+  try {
+    localStorage.setItem(SOUND_ENABLED_STORAGE_KEY, on ? "1" : "0");
+  } catch {
+    /* quota / private mode */
+  }
+}
+
 function pauseStreamTypers(state: AudioState) {
   for (const el of [state.botTypingEl, state.systemStreamTypingEl, state.asciiStreamTypingEl]) {
     if (el && !el.paused) {
@@ -50,6 +58,19 @@ export function useShellSound() {
   useEffect(() => {
     soundEnabledRef.current = soundEnabled;
   }, [soundEnabled]);
+
+  useLayoutEffect(() => {
+    try {
+      if (localStorage.getItem(SOUND_ENABLED_STORAGE_KEY) === "1") {
+        soundEnabledRef.current = true;
+        // Hydrate from localStorage after SSR (server always starts false).
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional client-only restore
+        setSoundEnabled(true);
+      }
+    } catch {
+      /* private mode */
+    }
+  }, []);
 
   const getOrCreate = useCallback(() => {
     if (typeof window === "undefined") {
@@ -371,10 +392,12 @@ export function useShellSound() {
         void st.ctx.suspend();
       }
       soundEnabledRef.current = false;
+      persistSoundPref(false);
       setSoundEnabled(false);
       return;
     }
     soundEnabledRef.current = true;
+    persistSoundPref(true);
     // Same user gesture as the click — satisfies autoplay; primes graph only after opt-in.
     void ensureMediaAndResume();
     setSoundEnabled(true);
