@@ -11,7 +11,12 @@ import { conversationIdFromChatiqJson, welcomeTextFromChatiqJson } from "@/lib/c
 import { consumeChatiqSseStream } from "@/lib/chatiqStream";
 import { revealBufferedBotText } from "@/lib/revealBotBuffer";
 import { WaitlistGateScrim, WaitlistOverlay } from "@/components/WaitlistOverlay";
-import { ASSISTANT_WELCOME_FALLBACK_TEXT, SHELL_UI } from "@/lib/shellConfig";
+import {
+  ASSISTANT_WELCOME_FALLBACK_TEXT,
+  SHELL_UI,
+  WAITLIST_GATE_SESSION_VALUE,
+  WAITLIST_OVERLAY,
+} from "@/lib/shellConfig";
 import { useShellSound } from "@/lib/useShellSound";
 
 type ChatRole = "user" | "bot" | "system";
@@ -108,7 +113,7 @@ function BotMessageBody({ raw, streaming }: { raw: string; streaming?: boolean }
 }
 
 export default function Home() {
-  const [waitlistGateBlocksChat, setWaitlistGateBlocksChat] = useState(true);
+  const [waitlistOpen, setWaitlistOpen] = useState(true);
   const conversationIdRef = useRef<string | null>(null);
   /** Boot welcome row removed from the log on the user’s first message (thread continues via `conversation_id`). */
   const welcomeMessageIdRef = useRef<string | null>(null);
@@ -123,6 +128,36 @@ export default function Home() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const stickToBottomRef = useRef(true);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    try {
+      if (
+        sessionStorage.getItem(WAITLIST_OVERLAY.sessionStorageKey) ===
+        WAITLIST_GATE_SESSION_VALUE
+      ) {
+        setWaitlistOpen(false);
+      }
+    } catch {
+      /* private mode */
+    }
+  }, []);
+
+  const dismissWaitlist = useCallback(() => {
+    try {
+      sessionStorage.setItem(
+        WAITLIST_OVERLAY.sessionStorageKey,
+        WAITLIST_GATE_SESSION_VALUE,
+      );
+    } catch {
+      /* private mode */
+    }
+    setWaitlistOpen(false);
+  }, []);
+
+  const openWaitlist = useCallback(() => {
+    setWaitlistOpen(true);
+  }, []);
+
   const {
     soundEnabled,
     toggleSoundEnabled,
@@ -256,7 +291,6 @@ export default function Home() {
 
     const runWelcome = async () => {
       stickToBottomRef.current = true;
-      void unlock();
       setIsTyping(true);
       setDraftBotText("");
       await startBotThinkingSound();
@@ -367,7 +401,7 @@ export default function Home() {
       setIsTyping(false);
       setDraftBotText("");
     };
-  }, [revealStaticAssistantText, startBotThinkingSound, stopBotThinkingSound, stopTyping, unlock]);
+  }, [revealStaticAssistantText, startBotThinkingSound, stopBotThinkingSound, stopTyping]);
 
   const onSubmit = async (rawText: string) => {
     const text = rawText.trim();
@@ -474,25 +508,36 @@ export default function Home() {
     <div
       className={`${terminalFont.className} relative h-[100dvh] overflow-hidden bg-[#080602] text-[#ffcc66]`}
     >
-      <WaitlistGateScrim active={waitlistGateBlocksChat} />
+      <WaitlistGateScrim active={waitlistOpen} />
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_85%_75%_at_50%_45%,transparent_40%,rgba(0,0,0,0.55)_100%),radial-gradient(ellipse_100%_60%_at_50%_50%,rgba(255,190,90,0.06),transparent_55%)]" />
       <div className="scanlines pointer-events-none absolute inset-0 opacity-20" />
 
       <main
-        inert={waitlistGateBlocksChat ? true : undefined}
+        inert={waitlistOpen ? true : undefined}
         className="relative z-10 mx-auto box-border flex h-full min-h-0 w-full max-w-5xl flex-col px-6 pb-6 pt-6 sm:px-10 sm:pb-8 sm:pt-10"
       >
         <header className="mb-5 shrink-0 flex items-center justify-between gap-3 border-b border-[#b8892e] pb-3 text-xs tracking-[0.25em] text-[#b8892e] sm:text-sm">
           <span>{SHELL_UI.headerTitle}</span>
-          <button
-            type="button"
-            onClick={toggleSoundEnabled}
-            aria-pressed={soundEnabled}
-            aria-label={soundEnabled ? "Turn audio feedback off" : "Turn audio feedback on"}
-            className="inline-flex shrink-0 cursor-pointer items-center justify-center border-0 bg-transparent p-0 text-[#7aab8a] shadow-none ring-0 transition hover:text-[#9fcbad] focus:outline-none"
-          >
-            <AudioFeedbackIcon muted={!soundEnabled} />
-          </button>
+          <div className="flex shrink-0 items-center gap-3 sm:gap-4">
+            {!waitlistOpen ? (
+              <button
+                type="button"
+                onClick={openWaitlist}
+                className="cursor-pointer border-0 bg-transparent p-0 text-[0.65rem] tracking-[0.2em] text-[#7aab8a] underline decoration-[#4a6b58] underline-offset-4 transition hover:text-[#9fcbad] sm:text-xs"
+              >
+                {WAITLIST_OVERLAY.headerReopenLabel}
+              </button>
+            ) : null}
+            <button
+              type="button"
+              onClick={toggleSoundEnabled}
+              aria-pressed={soundEnabled}
+              aria-label={soundEnabled ? "Turn audio feedback off" : "Turn audio feedback on"}
+              className="inline-flex shrink-0 cursor-pointer items-center justify-center border-0 bg-transparent p-0 text-[#7aab8a] shadow-none ring-0 transition hover:text-[#9fcbad] focus:outline-none"
+            >
+              <AudioFeedbackIcon muted={!soundEnabled} />
+            </button>
+          </div>
         </header>
 
         <section
@@ -575,7 +620,8 @@ export default function Home() {
 
       <WaitlistOverlay
         className={terminalFont.className}
-        onBlockingChange={setWaitlistGateBlocksChat}
+        open={waitlistOpen}
+        onDismiss={dismissWaitlist}
       />
     </div>
   );

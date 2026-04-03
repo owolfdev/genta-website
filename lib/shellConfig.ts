@@ -10,10 +10,19 @@ export const SHELL_UI = {
   headerTitle: "GENTA // LOCAL-FIRST MODEL-AGNOSTIC LLM TOOLING // STREAMING",
 } as const;
 
+/**
+ * Stored under {@link WAITLIST_OVERLAY.sessionStorageKey} when the user dismisses the gate
+ * (“Chat With Genta Assistant”). **Browser `sessionStorage`** — one tab only, cleared when the tab
+ * closes (not `localStorage`). Re-open anytime via the header “Join Waiting List” control.
+ */
+export const WAITLIST_GATE_SESSION_VALUE = "dismissed" as const;
+
 /** Marketing overlay (waitlist gate) — short copy, not full docs. */
 export const WAITLIST_OVERLAY = {
   /** Waitlist backdrop tint — applied as inline `backgroundColor` on the scrim div (see WaitlistOverlay). */
   scrimBackground: "rgba(4, 3, 2, 0.7)",
+  /** Header CTA when the gate is closed — reopens the same dialog. */
+  headerReopenLabel: "Join Waiting List",
   title: "Genta",
   tagline:
     "Local-first AI assistant for desktop and mobile. Your chat, tools, and memory stay on your device by default—not on someone else’s server.",
@@ -26,6 +35,7 @@ export const WAITLIST_OVERLAY = {
   emailPlaceholder: "you@domain.com",
   submitLabel: "Join the waiting list",
   dismissLabel: "Chat With Genta Assistant",
+  /** `sessionStorage` key; value {@link WAITLIST_GATE_SESSION_VALUE} means “don’t auto-open on load”. */
   sessionStorageKey: "genta-waitlist-overlay",
 } as const;
 

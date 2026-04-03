@@ -1,16 +1,7 @@
 "use client";
 
-import {
-  useCallback,
-  useEffect,
-  useId,
-  useLayoutEffect,
-  useRef,
-  useState,
-} from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { WAITLIST_OVERLAY } from "@/lib/shellConfig";
-
-const SESSION_VALUE = "dismissed";
 
 /**
  * Full-screen dim layer owned by the page shell so it exists on the same commit as `<main>`,
@@ -44,38 +35,19 @@ export function WaitlistGateScrim({ active }: { active: boolean }) {
 type Props = {
   /** Terminal font class from parent (Share Tech Mono) — applied to the dialog card only, not the scrim. */
   className: string;
-  /** When the gate is open, parent should set `inert` on the chat shell so focus cannot escape underneath. */
-  onBlockingChange?: (blocked: boolean) => void;
+  open: boolean;
+  /** Persist dismissal + close UI (parent sets `sessionStorage` and `open` false). */
+  onDismiss: () => void;
 };
 
-export function WaitlistOverlay({ className, onBlockingChange }: Props) {
+export function WaitlistOverlay({ className, open, onDismiss }: Props) {
   const titleId = useId();
   const emailInputRef = useRef<HTMLInputElement>(null);
-  const [open, setOpen] = useState(true);
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<
     "idle" | "submitting" | "success" | "error"
   >("idle");
   const [errorMessage, setErrorMessage] = useState("");
-
-  useEffect(() => {
-    try {
-      if (
-        sessionStorage.getItem(WAITLIST_OVERLAY.sessionStorageKey) ===
-        SESSION_VALUE
-      ) {
-        // One-time hydrate from sessionStorage; server cannot read this key.
-        // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional gate restore
-        setOpen(false);
-      }
-    } catch {
-      /* private mode */
-    }
-  }, []);
-
-  useLayoutEffect(() => {
-    onBlockingChange?.(open);
-  }, [open, onBlockingChange]);
 
   useEffect(() => {
     if (!open) {
@@ -90,27 +62,18 @@ export function WaitlistOverlay({ className, onBlockingChange }: Props) {
     };
   }, [open]);
 
-  const dismiss = useCallback(() => {
-    try {
-      sessionStorage.setItem(WAITLIST_OVERLAY.sessionStorageKey, SESSION_VALUE);
-    } catch {
-      /* private mode */
-    }
-    setOpen(false);
-  }, []);
-
   useEffect(() => {
     if (!open) {
       return;
     }
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        dismiss();
+        onDismiss();
       }
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [open, dismiss]);
+  }, [open, onDismiss]);
 
   const onSubmitWaitlist = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -238,7 +201,7 @@ export function WaitlistOverlay({ className, onBlockingChange }: Props) {
 
           <button
             type="button"
-            onClick={dismiss}
+            onClick={onDismiss}
             className="mt-4 w-full border-0 bg-transparent py-2 text-center text-[0.8rem] tracking-wide text-[#7aab8a] underline decoration-[#4a6b58] underline-offset-4 transition hover:text-[#9fcbad]"
           >
             {WAITLIST_OVERLAY.dismissLabel}

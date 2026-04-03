@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { StreamSoundKind } from "./botProtocol";
 import { SHELL_SOUNDS } from "./soundConfig";
 
@@ -43,7 +43,13 @@ function pauseStreamTypers(state: AudioState) {
 
 export function useShellSound() {
   const stateRef = useRef<AudioState | null>(null);
+  /** Marketing UX: off until the user turns audio on in the shell header (explicit opt-in only). */
   const [soundEnabled, setSoundEnabled] = useState(false);
+  /** Latest `soundEnabled` for callbacks that must not create AudioContext / `<audio>` until opt-in. */
+  const soundEnabledRef = useRef(soundEnabled);
+  useEffect(() => {
+    soundEnabledRef.current = soundEnabled;
+  }, [soundEnabled]);
 
   const getOrCreate = useCallback(() => {
     if (typeof window === "undefined") {
@@ -151,7 +157,7 @@ export function useShellSound() {
     return state;
   }, [getOrCreate]);
 
-  const unlock = useCallback(async () => {
+  const ensureMediaAndResume = useCallback(async () => {
     const state = await ensureMedia();
     if (!state) {
       return;
@@ -160,6 +166,14 @@ export function useShellSound() {
       await state.ctx.resume();
     }
   }, [ensureMedia]);
+
+  /** No-op when sound is off — avoids creating AudioContext / media elements on load (OS Bluetooth routing). */
+  const unlock = useCallback(async () => {
+    if (!soundEnabledRef.current) {
+      return;
+    }
+    await ensureMediaAndResume();
+  }, [ensureMediaAndResume]);
 
   const stopAllMedia = useCallback(() => {
     const state = stateRef.current;
@@ -350,14 +364,21 @@ export function useShellSound() {
   }, []);
 
   const toggleSoundEnabled = useCallback(() => {
-    setSoundEnabled((prev) => {
-      const next = !prev;
-      if (!next) {
-        stopAllMedia();
+    if (soundEnabledRef.current) {
+      stopAllMedia();
+      const st = stateRef.current;
+      if (st?.ctx.state === "running") {
+        void st.ctx.suspend();
       }
-      return next;
-    });
-  }, [stopAllMedia]);
+      soundEnabledRef.current = false;
+      setSoundEnabled(false);
+      return;
+    }
+    soundEnabledRef.current = true;
+    // Same user gesture as the click — satisfies autoplay; primes graph only after opt-in.
+    void ensureMediaAndResume();
+    setSoundEnabled(true);
+  }, [ensureMediaAndResume, stopAllMedia]);
 
   const playDone = useCallback(() => {
     // Intentionally unused: no cue after bot finishes (avoids second sound).
