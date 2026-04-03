@@ -40,6 +40,17 @@ export const WAITLIST_OVERLAY = {
 } as const;
 
 /**
+ * Inline bot directives (e.g. `@waitlist`) rendered as interactive chat controls.
+ * Keep this a strict whitelist; unknown directives render as normal text.
+ */
+export const BOT_INLINE_DIRECTIVES = {
+  waitlist: {
+    label: "Join Waiting List",
+    ariaLabel: "Open join waiting list dialog",
+  },
+} as const;
+
+/**
  * Fallback if the on-load ChatIQ welcome (`is_welcome` JSON) fails or is empty.
  * Your real welcome should be configured in ChatIQ; this is only a client-side backup.
  */
