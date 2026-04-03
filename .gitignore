@@ -32,6 +32,10 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.example
+
+# supabase CLI local link metadata (keep migrations + config.toml in git)
+supabase/.temp/
 
 # vercel
 .vercel

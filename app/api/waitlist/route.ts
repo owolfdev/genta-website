@@ -1,6 +1,40 @@
 import { NextResponse } from "next/server";
+import { createSupabaseAdmin } from "@/lib/supabaseAdmin";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+const WAITLIST_SOURCE = "genta-website-waitlist";
+
+async function forwardToWebhook(email: string): Promise<boolean> {
+  const webhook = process.env.WAITLIST_WEBHOOK_URL?.trim();
+  if (!webhook) {
+    return true;
+  }
+  const bearer = process.env.WAITLIST_WEBHOOK_BEARER?.trim();
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (bearer) {
+    headers.Authorization = `Bearer ${bearer}`;
+  }
+  try {
+    const upstream = await fetch(webhook, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        email,
+        source: WAITLIST_SOURCE,
+      }),
+    });
+    if (!upstream.ok) {
+      const text = await upstream.text().catch(() => "");
+      console.warn("[genta-waitlist] webhook failed:", upstream.status, text.slice(0, 200));
+      return false;
+    }
+    return true;
+  } catch (e) {
+    console.warn("[genta-waitlist] webhook error:", e);
+    return false;
+  }
+}
 
 export async function POST(req: Request) {
   let body: unknown;
@@ -14,49 +48,58 @@ export async function POST(req: Request) {
   }
 
   const o = body as Record<string, unknown>;
-  const email = typeof o.email === "string" ? o.email.trim() : "";
-  if (!email || !EMAIL_RE.test(email)) {
+  const rawEmail = typeof o.email === "string" ? o.email.trim() : "";
+  if (!rawEmail || !EMAIL_RE.test(rawEmail)) {
     return NextResponse.json(
       { error: { code: "INVALID_EMAIL", message: "A valid email is required" } },
       { status: 400 },
     );
   }
 
-  const webhook = process.env.WAITLIST_WEBHOOK_URL?.trim();
-  const bearer = process.env.WAITLIST_WEBHOOK_BEARER?.trim();
+  const email = rawEmail.toLowerCase();
+  const supabase = createSupabaseAdmin();
 
-  if (webhook) {
-    const headers: Record<string, string> = { "Content-Type": "application/json" };
-    if (bearer) {
-      headers.Authorization = `Bearer ${bearer}`;
+  if (supabase) {
+    const { error } = await supabase.from("genta_waitlist").insert({
+      email,
+      source: WAITLIST_SOURCE,
+    });
+
+    const duplicate =
+      error?.code === "23505" ||
+      (typeof error?.message === "string" && error.message.includes("duplicate key"));
+    if (error && !duplicate) {
+      console.warn("[genta-waitlist] supabase insert:", error.code, error.message);
+      return NextResponse.json(
+        { error: { code: "STORE_ERROR", message: "Could not save signup. Try again later." } },
+        { status: 502 },
+      );
     }
-    try {
-      const upstream = await fetch(webhook, {
-        method: "POST",
-        headers,
-        body: JSON.stringify({
-          email,
-          source: "genta-website-waitlist",
-        }),
-      });
-      if (!upstream.ok) {
-        const text = await upstream.text().catch(() => "");
-        console.warn("[genta-waitlist] webhook failed:", upstream.status, text.slice(0, 200));
-        return NextResponse.json(
-          { error: { code: "WEBHOOK_ERROR", message: "Could not save signup. Try again later." } },
-          { status: 502 },
-        );
+
+    void forwardToWebhook(email).then((ok) => {
+      if (!ok) {
+        console.warn("[genta-waitlist] email stored in Supabase but webhook failed");
       }
-    } catch (e) {
-      console.warn("[genta-waitlist] webhook error:", e);
+    });
+
+    return NextResponse.json({ ok: true });
+  }
+
+  const webhook = process.env.WAITLIST_WEBHOOK_URL?.trim();
+  if (webhook) {
+    const ok = await forwardToWebhook(email);
+    if (!ok) {
       return NextResponse.json(
         { error: { code: "WEBHOOK_ERROR", message: "Could not save signup. Try again later." } },
         { status: 502 },
       );
     }
-  } else {
-    console.info("[genta-waitlist] signup (set WAITLIST_WEBHOOK_URL to forward):", email);
+    return NextResponse.json({ ok: true });
   }
 
+  console.info(
+    "[genta-waitlist] signup (set NEXT_PUBLIC_SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY or WAITLIST_WEBHOOK_URL):",
+    email,
+  );
   return NextResponse.json({ ok: true });
 }

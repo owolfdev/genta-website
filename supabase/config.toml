@@ -1,0 +1,9 @@
+# Linked project (see `supabase link`). [db].major_version must match hosted Postgres (CLI warning).
+project_id = "qhfrqatbwoddkjwqhbso"
+
+[api]
+enabled = true
+
+[db]
+port = 54322
+major_version = 15
