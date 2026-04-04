@@ -6,8 +6,10 @@
  * (mint `<pre>` + ascii SFX) — see `lib/botProtocol.ts`.
  */
 export const SHELL_UI = {
-  /** Top bar title (monospace header). */
-  headerTitle: "GENTA // LOCAL-FIRST MODEL-AGNOSTIC LLM TOOLING // STREAMING",
+  /** Top bar title on `sm+` breakpoints (monospace header). */
+  headerTitle: "GENTA // LOCAL-FIRST AI ASSISTANT",
+  /** Top bar title below `sm` — short line when the full title would crowd narrow viewports. */
+  headerTitleShort: "GENTA",
   /** Stops streamed / revealed assistant output and re-enables input (see home-client). */
   interruptOutputLabel: "Stop",
   interruptOutputAriaLabel: "Stop assistant output",

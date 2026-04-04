@@ -679,8 +679,12 @@ export default function HomeClient() {
         inert={waitlistOpen ? true : undefined}
         className="relative z-10 mx-auto box-border flex h-full min-h-0 w-full max-w-5xl flex-col px-6 pb-6 pt-6 sm:px-10 sm:pb-8 sm:pt-10"
       >
-        <header className="mb-5 shrink-0 flex items-center justify-between gap-3 border-b border-[#b8892e] pb-3 text-xs tracking-[0.25em] text-[#b8892e] sm:text-sm">
-          <span>{SHELL_UI.headerTitle}</span>
+        <header
+          className="mb-5 shrink-0 flex items-center justify-between gap-3 border-b border-[#b8892e] pb-3 text-xs tracking-[0.25em] text-[#b8892e] sm:text-sm"
+          aria-label={SHELL_UI.headerTitle}
+        >
+          <span className="sm:hidden">{SHELL_UI.headerTitleShort}</span>
+          <span className="hidden sm:inline">{SHELL_UI.headerTitle}</span>
           <div className="flex shrink-0 items-center gap-3 sm:gap-4">
             {!waitlistOpen ? (
               <button
