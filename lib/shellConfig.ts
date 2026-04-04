@@ -40,21 +40,18 @@ export const WAITLIST_OVERLAY = {
     "Off grid: use Genta offline and on your own terms.",
     "Genta is coming soon. Join the waitlist to get news and updates.",
   ],
-  /** Visible label for the email field (full sentence; linked via `htmlFor`). */
-  emailLabel: "Join the waitlist — we’ll email you when Genta is ready.",
+  /** `<label htmlFor="waitlist-email">` — no link; privacy line sits below the input row. */
+  emailLabel: "Enter your email address — we’ll contact you when Genta is ready.",
+  /** Below email + Join; before `privacyPolicyLinkText` (new tab). */
+  waitlistPrivacyBelowInputBeforeLink:
+    "We only use your email for Genta news. We don’t sell it or share it with anyone for advertising. Joining waitlist or chat means you agree to our ",
+  privacyPolicyLinkText: "Privacy Policy",
+  waitlistPrivacyBelowInputAfterLink: ".",
   emailPlaceholder: "you@domain.com",
   submitLabel: "Join Waitlist",
   dismissLabel: "Chat With Genta Assistant",
   /** `aria-label` for the dismiss button (visible label is long). */
   dismissAriaLabel: "Continue to chat with the Genta assistant",
-  /**
-   * Footer below “Chat…”; `privacyPolicyLinkText` is the linked phrase (new tab).
-   * Plain-language data use + implicit consent.
-   */
-  privacyFooterBeforeLink:
-    "We only use your email for Genta news. We don’t sell it or share it with anyone for advertising. Joining waitlist or chat means you agree to our ",
-  privacyPolicyLinkText: "Privacy Policy",
-  privacyFooterAfterLink: ".",
   /** `sessionStorage` key; value {@link WAITLIST_GATE_SESSION_VALUE} means “don’t auto-open on load”. */
   sessionStorageKey: "genta-waitlist-overlay",
 } as const;

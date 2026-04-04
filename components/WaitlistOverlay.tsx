@@ -161,11 +161,11 @@ export function WaitlistOverlay({ className, open, onDismiss }: Props) {
           </ul>
 
           <form
-            className="mt-6 space-y-3"
+            className="mt-6 space-y-3 border-t border-[#4a6b58]/50 pt-4 sm:mt-6 sm:pt-5"
             onSubmit={(e) => void onSubmitWaitlist(e)}
           >
             <label
-              className="mb-0.5 block text-[0.88rem] leading-snug text-[#c9a85e]/95 sm:text-[0.9rem]"
+              className="mb-0.5 block text-[0.75rem] leading-relaxed text-[#b8892e]/95 sm:text-[0.8rem]"
               htmlFor="waitlist-email"
             >
               {WAITLIST_OVERLAY.emailLabel}
@@ -199,6 +199,19 @@ export function WaitlistOverlay({ className, open, onDismiss }: Props) {
               </button>
             </div>
 
+            <p className="block text-[0.75rem] leading-relaxed text-[#b8892e]/95 sm:text-[0.8rem]">
+              {WAITLIST_OVERLAY.waitlistPrivacyBelowInputBeforeLink}
+              <Link
+                href={LEGAL_ROUTES.privacyPolicy}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[#7aab8a] underline decoration-[#4a6b58] underline-offset-2 transition hover:text-[#9fcbad]"
+              >
+                {WAITLIST_OVERLAY.privacyPolicyLinkText}
+              </Link>
+              {WAITLIST_OVERLAY.waitlistPrivacyBelowInputAfterLink}
+            </p>
+
             {errorMessage ? (
               <p className="text-[0.8rem] text-[#c97a6a]" role="alert">
                 {errorMessage}
@@ -211,7 +224,7 @@ export function WaitlistOverlay({ className, open, onDismiss }: Props) {
             ) : null}
           </form>
 
-          <div className="mt-5 flex flex-col gap-4 sm:mt-6 sm:gap-5">
+          <div className="mt-5 sm:mt-6">
             <button
               type="button"
               onClick={onDismiss}
@@ -220,18 +233,6 @@ export function WaitlistOverlay({ className, open, onDismiss }: Props) {
             >
               {WAITLIST_OVERLAY.dismissLabel}
             </button>
-            <p className="border-t border-[#4a6b58]/50 pt-3 text-[0.72rem] leading-relaxed text-[#c9a85e]/95 sm:text-[0.78rem]">
-              {WAITLIST_OVERLAY.privacyFooterBeforeLink}
-              <Link
-                href={LEGAL_ROUTES.privacyPolicy}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-[#7aab8a] underline decoration-[#4a6b58] underline-offset-2 transition hover:text-[#9fcbad]"
-              >
-                {WAITLIST_OVERLAY.privacyPolicyLinkText}
-              </Link>
-              {WAITLIST_OVERLAY.privacyFooterAfterLink}
-            </p>
           </div>
           </div>
         </div>
