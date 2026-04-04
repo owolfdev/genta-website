@@ -13,8 +13,13 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Genta",
-  description: "Local-first AI assistant — marketing site",
+  metadataBase: new URL("https://trygenta.com"),
+  title: {
+    default: "Genta",
+    template: "%s · Genta",
+  },
+  description:
+    "Local-first AI assistant for desktop and mobile — your chat, tools, and memory on your device by default.",
 };
 
 export default function RootLayout({

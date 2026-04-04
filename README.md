@@ -19,7 +19,7 @@ npm install
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+Open [http://localhost:3000](http://localhost:3000) for the marketing landing (waitlist + link to chat). The interactive terminal lives at [`/chat`](http://localhost:3000/chat).
 
 Other scripts: `npm run build`, `npm run start`, `npm run lint`.
 
@@ -27,7 +27,7 @@ Other scripts: `npm run build`, `npm run start`, `npm run lint`.
 
 Signups go to **`genta_waitlist`** via `POST /api/waitlist` using the **service role** on the server (`SUPABASE_SERVICE_ROLE_KEY`). Copy [`.env.example`](.env.example) to `.env.local` and set `NEXT_PUBLIC_SUPABASE_URL` plus the service role key.
 
-The waitlist dialog shows policy copy and a **[Privacy Policy](/privacy)** link (new tab); joining the waitlist or choosing to chat is treated as agreement for recording purposes. The live policy is published at `/privacy` (Genta, trygenta.com, Bangkok — see that page for contact email). Set **`PRIVACY_POLICY_VERSION`** (e.g. a date string) so stored signups record which version the user saw. Update the policy page and version when offerings or regions change.
+The landing page and the in-chat waitlist overlay share the same policy copy and **[Privacy Policy](/privacy)** link; joining the waitlist or using chat is treated as agreement for recording purposes. The live policy is published at `/privacy` (Genta, trygenta.com, Bangkok — see that page for contact email). Set **`PRIVACY_POLICY_VERSION`** (e.g. a date string) so stored signups record which version the user saw. Update the policy page and version when offerings or regions change.
 
 This repo does **not** ship Supabase CLI migrations for now; schema is applied in the Supabase **SQL Editor** when needed.
 

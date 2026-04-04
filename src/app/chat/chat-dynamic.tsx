@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 
-const HomeClient = dynamic(() => import("./home-client"), {
+const ChatClient = dynamic(() => import("./chat-client"), {
   ssr: false,
   loading: () => (
     <div
@@ -13,6 +13,6 @@ const HomeClient = dynamic(() => import("./home-client"), {
   ),
 });
 
-export default function HomeDynamic() {
-  return <HomeClient />;
+export default function ChatDynamic() {
+  return <ChatClient />;
 }

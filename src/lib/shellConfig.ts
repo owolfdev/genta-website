@@ -10,7 +10,7 @@ export const SHELL_UI = {
   headerTitle: "GENTA // LOCAL-FIRST AI ASSISTANT",
   /** Top bar title below `sm` — short line when the full title would crowd narrow viewports. */
   headerTitleShort: "GENTA",
-  /** Stops streamed / revealed assistant output and re-enables input (see home-client). */
+  /** Stops streamed / revealed assistant output and re-enables input (see `app/chat/chat-client.tsx`). */
   interruptOutputLabel: "Stop",
   interruptOutputAriaLabel: "Stop assistant output",
   /** Header link to `/privacy` (new tab). */
@@ -50,6 +50,8 @@ export const WAITLIST_OVERLAY = {
   emailPlaceholder: "you@domain.com",
   submitLabel: "Join Waitlist",
   dismissLabel: "Chat With Genta Assistant",
+  /** Primary CTA on the marketing landing page (see `CHAT_ROUTE` in `lib/routes.ts`). */
+  landingChatCtaLabel: "Open terminal chat",
   /** `aria-label` for the dismiss button (visible label is long). */
   dismissAriaLabel: "Continue to chat with the Genta assistant",
   /** `sessionStorage` key; value {@link WAITLIST_GATE_SESSION_VALUE} means “don’t auto-open on load”. */

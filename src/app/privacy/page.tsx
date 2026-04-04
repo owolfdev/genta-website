@@ -14,7 +14,7 @@ const CONTACT_LOCATION = "Bangkok, Thailand";
 const LEGAL_ENTITY_LABEL = "Genta";
 
 export const metadata: Metadata = {
-  title: "Privacy Policy | Genta",
+  title: "Privacy Policy",
   description:
     "How Genta collects, uses, and protects personal data on trygenta.com — waitlist, on-site chat, and related services.",
 };

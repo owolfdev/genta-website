@@ -161,26 +161,16 @@ function BotMessageBody({
   );
 }
 
-function readWaitlistOpenFromSession(): boolean {
-  try {
-    return (
-      sessionStorage.getItem(WAITLIST_OVERLAY.sessionStorageKey) !==
-      WAITLIST_GATE_SESSION_VALUE
-    );
-  } catch {
-    return true;
-  }
-}
-
-export default function HomeClient() {
-  /** Client-only bundle (`page.tsx` uses `dynamic` `ssr:false`) so this runs once with `sessionStorage` — no SSR HTML flash. */
-  const [waitlistOpen, setWaitlistOpen] = useState(readWaitlistOpenFromSession);
+export default function ChatClient() {
+  /** Waitlist opens only from the header or inline bot control — not on first paint (landing covers onboarding). */
+  const [waitlistOpen, setWaitlistOpen] = useState(false);
   /** Bumps when the user explicitly reopens the waitlist so the dialog remounts with fresh consent state. */
   const [waitlistDialogEpoch, setWaitlistDialogEpoch] = useState(0);
   const conversationIdRef = useRef<string | null>(null);
   /** Boot welcome row removed from the log on the user’s first message (thread continues via `conversation_id`). */
   const welcomeMessageIdRef = useRef<string | null>(null);
-  const welcomeStartedRef = useRef(false);
+  /** Set only after a non-empty welcome is committed — avoids Strict Mode double-effect skipping welcome; still enforces one welcome per mount. */
+  const welcomeFinishedRef = useRef(false);
   const botBufferRef = useRef("");
   const streamDoneRef = useRef(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -401,10 +391,9 @@ export default function HomeClient() {
   };
 
   useEffect(() => {
-    if (waitlistOpen || welcomeStartedRef.current) {
+    if (waitlistOpen || welcomeFinishedRef.current) {
       return;
     }
-    welcomeStartedRef.current = true;
     let cancelled = false;
 
     const runWelcome = async () => {
@@ -420,6 +409,9 @@ export default function HomeClient() {
       let revealedForMessage = "";
 
       const finishWelcome = (messageText: string) => {
+        if (welcomeFinishedRef.current) {
+          return;
+        }
         welcomeFlowRef.current.stopTyping();
         welcomeFlowRef.current.stopBotThinkingSound();
         setDraftBotText("");
@@ -428,6 +420,7 @@ export default function HomeClient() {
         if (!messageText.trim()) {
           return;
         }
+        welcomeFinishedRef.current = true;
         const welcomeId = crypto.randomUUID();
         welcomeMessageIdRef.current = welcomeId;
         setMessages((prev) => [...prev, { id: welcomeId, role: "bot", text: messageText }]);
@@ -539,6 +532,10 @@ export default function HomeClient() {
         setDraftBotText("");
         setIsTyping(false);
         assistantAbortRef.current = null;
+        return;
+      }
+
+      if (welcomeFinishedRef.current) {
         return;
       }
 
