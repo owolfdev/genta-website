@@ -683,7 +683,9 @@ export default function HomeClient() {
           className="mb-5 shrink-0 flex items-center justify-between gap-3 border-b border-[#b8892e] pb-3 text-xs tracking-[0.25em] text-[#b8892e] sm:text-sm"
           aria-label={SHELL_UI.headerTitle}
         >
-          <span className="sm:hidden">{SHELL_UI.headerTitleShort}</span>
+          <span className="text-base tracking-[0.25em] sm:hidden">
+            {SHELL_UI.headerTitleShort}
+          </span>
           <span className="hidden sm:inline">{SHELL_UI.headerTitle}</span>
           <div className="flex shrink-0 items-center gap-3 sm:gap-4">
             {!waitlistOpen ? (
