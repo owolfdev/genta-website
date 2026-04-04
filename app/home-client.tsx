@@ -694,13 +694,23 @@ export default function HomeClient() {
           <span className="hidden sm:inline">{SHELL_UI.headerTitle}</span>
           <div className="flex shrink-0 items-center gap-3 sm:gap-4">
             {!waitlistOpen ? (
-              <button
-                type="button"
-                onClick={openWaitlist}
-                className="cursor-pointer border-0 bg-transparent p-0 text-[0.65rem] tracking-[0.2em] text-[#7aab8a] underline decoration-[#4a6b58] underline-offset-4 transition hover:text-[#9fcbad] sm:text-xs"
-              >
-                {WAITLIST_OVERLAY.headerReopenLabel}
-              </button>
+              <>
+                <button
+                  type="button"
+                  onClick={openWaitlist}
+                  className="cursor-pointer border-0 bg-transparent p-0 text-[0.65rem] tracking-[0.2em] text-[#7aab8a] underline decoration-[#4a6b58] underline-offset-4 transition hover:text-[#9fcbad] sm:text-xs"
+                >
+                  {WAITLIST_OVERLAY.headerReopenLabel}
+                </button>
+                <Link
+                  href={LEGAL_ROUTES.privacyPolicy}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[0.65rem] tracking-[0.2em] text-[#7aab8a] underline decoration-[#4a6b58] underline-offset-4 transition hover:text-[#9fcbad] sm:text-xs"
+                >
+                  {SHELL_UI.privacyPolicyLinkLabel}
+                </Link>
+              </>
             ) : null}
             <button
               type="button"
@@ -810,15 +820,6 @@ export default function HomeClient() {
             </button>
           </div>
         </form>
-
-        <footer className="mt-3 shrink-0 border-t border-[#4a6b58]/50 pt-3 text-center text-[0.65rem] tracking-[0.2em] text-[#6a8a72] sm:text-xs">
-          <Link
-            href={LEGAL_ROUTES.privacyPolicy}
-            className="text-[#7aab8a] underline decoration-[#4a6b58] underline-offset-4 transition hover:text-[#9fcbad]"
-          >
-            {SHELL_UI.privacyPolicyLinkLabel}
-          </Link>
-        </footer>
       </main>
 
       <WaitlistOverlay

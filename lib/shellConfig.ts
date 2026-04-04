@@ -13,14 +13,14 @@ export const SHELL_UI = {
   /** Stops streamed / revealed assistant output and re-enables input (see home-client). */
   interruptOutputLabel: "Stop",
   interruptOutputAriaLabel: "Stop assistant output",
-  /** Persistent footer link to the privacy policy. */
+  /** Header link to `/privacy` (new tab). */
   privacyPolicyLinkLabel: "Privacy",
 } as const;
 
 /**
  * Stored under {@link WAITLIST_OVERLAY.sessionStorageKey} when the user dismisses the gate
  * (“Chat With Genta Assistant”). **Browser `sessionStorage`** — one tab only, cleared when the tab
- * closes (not `localStorage`). Re-open anytime via the header “Join Waiting List” control.
+ * closes (not `localStorage`). Re-open anytime via the header “Waitlist” control.
  */
 export const WAITLIST_GATE_SESSION_VALUE = "dismissed" as const;
 
@@ -29,7 +29,7 @@ export const WAITLIST_OVERLAY = {
   /** Waitlist backdrop tint — applied as inline `backgroundColor` on the scrim div (see WaitlistOverlay). */
   scrimBackground: "rgba(4, 3, 2, 0.7)",
   /** Header CTA when the gate is closed — reopens the same dialog. */
-  headerReopenLabel: "Join Waiting List",
+  headerReopenLabel: "Waitlist",
   title: "Genta",
   tagline:
     "Local-first AI assistant for desktop and mobile. Your chat, tools, and memory stay on your device by default—not on someone else’s server.",
@@ -38,23 +38,23 @@ export const WAITLIST_OVERLAY = {
     // "Your files and notes in one place, with retrieval you can trace.",
     "Pick the stack that fits you: model-agnostic, built for real work.",
     "Off grid: use Genta offline and on your own terms.",
+    "Genta is coming soon. Join the waitlist to get news and updates.",
   ],
-  emailLabel: "Email",
+  /** Visible label for the email field (full sentence; linked via `htmlFor`). */
+  emailLabel: "Join the waitlist — we’ll email you when Genta is ready.",
   emailPlaceholder: "you@domain.com",
-  submitLabel: "Join the waiting list",
+  submitLabel: "Join Waitlist",
   dismissLabel: "Chat With Genta Assistant",
+  /** `aria-label` for the dismiss button (visible label is long). */
+  dismissAriaLabel: "Continue to chat with the Genta assistant",
   /**
-   * Shown above the email field. The UI appends a “Privacy Policy” link (new tab) after this sentence.
-   * Keep factual; have counsel review for your jurisdictions.
+   * Footer below “Chat…”; `privacyPolicyLinkText` is the linked phrase (new tab).
+   * Plain-language data use + implicit consent.
    */
-  privacyNoticeBeforeLink:
-    "We’ll use your email only to contact you about Genta and related product news. For how we process personal data and your rights, see our",
+  privacyFooterBeforeLink:
+    "We only use your email for Genta news. We don’t sell it or share it with anyone for advertising. Joining waitlist or chat means you agree to our ",
   privacyPolicyLinkText: "Privacy Policy",
-  /** Visually hidden suffix after the link (e.g. closing sentence). */
-  privacyNoticeAfterLink: ".",
-  /** Checkbox label; the notice above includes the policy link. */
-  privacyConsentLabel: "I agree to the Privacy Policy and want to join the waiting list.",
-  privacyConsentError: "Please confirm you agree to the Privacy Policy to continue.",
+  privacyFooterAfterLink: ".",
   /** `sessionStorage` key; value {@link WAITLIST_GATE_SESSION_VALUE} means “don’t auto-open on load”. */
   sessionStorageKey: "genta-waitlist-overlay",
 } as const;
@@ -65,8 +65,8 @@ export const WAITLIST_OVERLAY = {
  */
 export const BOT_INLINE_DIRECTIVES = {
   waitlist: {
-    label: "Join Waiting List",
-    ariaLabel: "Open join waiting list dialog",
+    label: "Waitlist",
+    ariaLabel: "Open waitlist dialog",
   },
 } as const;
 

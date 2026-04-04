@@ -5,6 +5,37 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const WAITLIST_SOURCE = "genta-website-waitlist";
 
+function isDuplicateKeyError(error: { code?: string; message?: string }): boolean {
+  return (
+    error.code === "23505" ||
+    (typeof error.message === "string" && error.message.includes("duplicate key"))
+  );
+}
+
+/** Shapes to try in order — matches `waitlist_schema.sql` when all columns exist; falls back for minimal tables (email + source only). */
+function gentaWaitlistInsertAttempts(
+  email: string,
+  consentAt: string,
+  consentVersion: string,
+): Record<string, string | boolean>[] {
+  return [
+    {
+      email,
+      source: WAITLIST_SOURCE,
+      privacy_accepted: true,
+      privacy_accepted_at: consentAt,
+      privacy_policy_version: consentVersion,
+    },
+    {
+      email,
+      source: WAITLIST_SOURCE,
+      privacy_accepted_at: consentAt,
+      privacy_policy_version: consentVersion,
+    },
+    { email, source: WAITLIST_SOURCE },
+  ];
+}
+
 function policyVersion(): string {
   return process.env.PRIVACY_POLICY_VERSION?.trim() || "1.0";
 }
@@ -86,18 +117,37 @@ export async function POST(req: Request) {
   const supabase = createSupabaseAdmin();
 
   if (supabase) {
-    const { error } = await supabase.from("genta_waitlist").insert({
-      email,
-      source: WAITLIST_SOURCE,
-      privacy_accepted_at: consentAt,
-      privacy_policy_version: consentVersion,
-    });
+    const attempts = gentaWaitlistInsertAttempts(email, consentAt, consentVersion);
+    let lastError: { code?: string; message?: string; details?: string; hint?: string } | null =
+      null;
 
-    const duplicate =
-      error?.code === "23505" ||
-      (typeof error?.message === "string" && error.message.includes("duplicate key"));
-    if (error && !duplicate) {
-      console.warn("[genta-waitlist] supabase insert:", error.code, error.message);
+    for (let i = 0; i < attempts.length; i++) {
+      const { error } = await supabase.from("genta_waitlist").insert(attempts[i]);
+      if (!error) {
+        if (i > 0) {
+          console.info(
+            "[genta-waitlist] insert used a narrower column set (attempt %d/%d). Run supabase/waitlist_schema.sql to add privacy audit columns.",
+            i + 1,
+            attempts.length,
+          );
+        }
+        lastError = null;
+        break;
+      }
+      if (isDuplicateKeyError(error)) {
+        lastError = null;
+        break;
+      }
+      lastError = error;
+    }
+
+    if (lastError) {
+      console.warn("[genta-waitlist] supabase insert failed (all attempts):", {
+        code: lastError.code,
+        message: lastError.message,
+        details: lastError.details,
+        hint: lastError.hint,
+      });
       return NextResponse.json(
         { error: { code: "STORE_ERROR", message: "Could not save signup. Try again later." } },
         { status: 502 },

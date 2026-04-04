@@ -50,8 +50,6 @@ export function WaitlistOverlay({ className, open, onDismiss }: Props) {
     "idle" | "submitting" | "success" | "error"
   >("idle");
   const [errorMessage, setErrorMessage] = useState("");
-  const [privacyAccepted, setPrivacyAccepted] = useState(false);
-  const consentId = useId();
 
   useEffect(() => {
     if (!open) {
@@ -84,11 +82,6 @@ export function WaitlistOverlay({ className, open, onDismiss }: Props) {
     const trimmed = email.trim();
     if (!trimmed) {
       setErrorMessage("Enter your email.");
-      setStatus("error");
-      return;
-    }
-    if (!privacyAccepted) {
-      setErrorMessage(WAITLIST_OVERLAY.privacyConsentError);
       setStatus("error");
       return;
     }
@@ -171,67 +164,40 @@ export function WaitlistOverlay({ className, open, onDismiss }: Props) {
             className="mt-6 space-y-3"
             onSubmit={(e) => void onSubmitWaitlist(e)}
           >
-            <p className="text-[0.78rem] leading-relaxed text-[#c9a85e]/95">
-              {WAITLIST_OVERLAY.privacyNoticeBeforeLink}{" "}
-              <Link
-                href={LEGAL_ROUTES.privacyPolicy}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-[#7aab8a] underline decoration-[#4a6b58] underline-offset-2 transition hover:text-[#9fcbad]"
-              >
-                {WAITLIST_OVERLAY.privacyPolicyLinkText}
-              </Link>
-              {WAITLIST_OVERLAY.privacyNoticeAfterLink}
-            </p>
-
-            <div className="flex gap-2.5">
+            <label
+              className="mb-0.5 block text-[0.88rem] leading-snug text-[#c9a85e]/95 sm:text-[0.9rem]"
+              htmlFor="waitlist-email"
+            >
+              {WAITLIST_OVERLAY.emailLabel}
+            </label>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-stretch">
               <input
-                id={consentId}
-                type="checkbox"
-                checked={privacyAccepted}
+                ref={emailInputRef}
+                id="waitlist-email"
+                type="email"
+                name="email"
+                autoComplete="email"
+                inputMode="email"
+                placeholder={WAITLIST_OVERLAY.emailPlaceholder}
+                value={email}
                 onChange={(e) => {
-                  setPrivacyAccepted(e.target.checked);
+                  setEmail(e.target.value);
                   if (status === "error") {
                     setStatus("idle");
                     setErrorMessage("");
                   }
                 }}
                 disabled={status === "submitting" || status === "success"}
-                className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer rounded border-[#4a6b58] bg-[#0c0a06] text-[#7aab8a] accent-[#7aab8a] disabled:cursor-not-allowed disabled:opacity-50"
+                className="min-w-0 flex-1 border border-[#4a6b58] bg-[#0c0a06] px-3 py-2.5 text-[0.95rem] text-[#ffcc66] outline-none ring-0 placeholder:text-[#b8892e]/45 focus:border-[#7aab8a] disabled:opacity-50"
               />
-              <label
-                htmlFor={consentId}
-                className="cursor-pointer text-[0.78rem] leading-snug text-[#c9a85e]/95"
+              <button
+                type="submit"
+                disabled={status === "submitting" || status === "success"}
+                className="shrink-0 border border-[#4a6b58] bg-[#0c0a06] px-4 py-2.5 text-[0.85rem] font-normal tracking-wide text-[#ffcc66] transition hover:border-[#7aab8a] focus-visible:border-[#7aab8a] focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-40 sm:self-stretch sm:px-5"
               >
-                {WAITLIST_OVERLAY.privacyConsentLabel}
-              </label>
+                {status === "submitting" ? "Sending…" : WAITLIST_OVERLAY.submitLabel}
+              </button>
             </div>
-
-            <label
-              className="block text-[0.7rem] tracking-wider text-[#b8892e]"
-              htmlFor="waitlist-email"
-            >
-              {WAITLIST_OVERLAY.emailLabel}
-            </label>
-            <input
-              ref={emailInputRef}
-              id="waitlist-email"
-              type="email"
-              name="email"
-              autoComplete="email"
-              inputMode="email"
-              placeholder={WAITLIST_OVERLAY.emailPlaceholder}
-              value={email}
-              onChange={(e) => {
-                setEmail(e.target.value);
-                if (status === "error") {
-                  setStatus("idle");
-                  setErrorMessage("");
-                }
-              }}
-              disabled={status === "submitting" || status === "success"}
-              className="w-full border border-[#4a6b58] bg-[#0c0a06] px-3 py-2.5 text-[0.95rem] text-[#ffcc66] outline-none ring-0 placeholder:text-[#b8892e]/45 focus:border-[#7aab8a] disabled:opacity-50"
-            />
 
             {errorMessage ? (
               <p className="text-[0.8rem] text-[#c97a6a]" role="alert">
@@ -243,24 +209,30 @@ export function WaitlistOverlay({ className, open, onDismiss }: Props) {
                 You’re on the list. We’ll be in touch.
               </p>
             ) : null}
-            <button
-              type="submit"
-              disabled={status === "submitting" || status === "success"}
-              className="w-full border border-[#b8892e] bg-[#b8892e]/10 py-2.5 text-xs font-normal uppercase tracking-[0.2em] text-[#ffcc66] transition hover:bg-[#b8892e]/20 disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              {status === "submitting"
-                ? "Sending…"
-                : WAITLIST_OVERLAY.submitLabel}
-            </button>
           </form>
 
-          <button
-            type="button"
-            onClick={onDismiss}
-            className="mt-4 w-full border-0 bg-transparent py-2 text-center text-[0.8rem] tracking-wide text-[#7aab8a] underline decoration-[#4a6b58] underline-offset-4 transition hover:text-[#9fcbad]"
-          >
-            {WAITLIST_OVERLAY.dismissLabel}
-          </button>
+          <div className="mt-3 space-y-3">
+            <button
+              type="button"
+              onClick={onDismiss}
+              aria-label={WAITLIST_OVERLAY.dismissAriaLabel}
+              className="w-full border border-[#b8892e] bg-[#b8892e]/10 py-2.5 text-xs font-normal uppercase tracking-[0.2em] text-[#ffcc66] transition hover:bg-[#b8892e]/20"
+            >
+              {WAITLIST_OVERLAY.dismissLabel}
+            </button>
+            <p className="border-t border-[#4a6b58]/50 pt-3 text-[0.72rem] leading-relaxed text-[#c9a85e]/95 sm:text-[0.78rem]">
+              {WAITLIST_OVERLAY.privacyFooterBeforeLink}
+              <Link
+                href={LEGAL_ROUTES.privacyPolicy}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[#7aab8a] underline decoration-[#4a6b58] underline-offset-2 transition hover:text-[#9fcbad]"
+              >
+                {WAITLIST_OVERLAY.privacyPolicyLinkText}
+              </Link>
+              {WAITLIST_OVERLAY.privacyFooterAfterLink}
+            </p>
+          </div>
           </div>
         </div>
       </div>
