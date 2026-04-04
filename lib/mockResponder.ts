@@ -31,7 +31,7 @@ const RESPONSES: { test: RegExp; output: string[] }[] = [
 
 const FALLBACK = [
   "Acknowledged. This response is preconfigured for shell testing.",
-  "Mock channel active. Replace this layer with API streaming later.",
+  "Mock channel active — local shell testing only; production uses the configured chat API.",
   "Input accepted. Prototype behavior currently runs on deterministic rules.",
 ];
 

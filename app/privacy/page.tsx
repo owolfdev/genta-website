@@ -7,10 +7,16 @@ const terminalFont = Share_Tech_Mono({
   weight: "400",
 });
 
+const SITE_URL = "https://trygenta.com";
+const CONTACT_EMAIL = "hello@trygenta.com";
+const CONTACT_LOCATION = "Bangkok, Thailand";
+/** Trading / product name; used as data-controller identification on this Site. */
+const LEGAL_ENTITY_LABEL = "Genta";
+
 export const metadata: Metadata = {
   title: "Privacy Policy | Genta",
   description:
-    "How Genta (genta-website) collects, uses, and protects personal data for the marketing site and waitlist.",
+    "How Genta collects, uses, and protects personal data on trygenta.com — waitlist, on-site chat, and related services.",
 };
 
 const linkClass =
@@ -52,25 +58,34 @@ export default function PrivacyPolicyPage() {
           </div>
         </header>
 
-        {/* <p className="rounded border border-[#b8892e]/60 bg-[#0c0a06] px-3 py-3 text-[0.8rem] leading-snug text-[#c9a85e] text-shadow-none">
-          <span className="text-[#ffcc66]"># </span>
-          <strong className="font-normal text-[#e8c266]">
-            Not legal advice.
-          </strong>{" "}
-          This page is a practical template aligned with how this marketing site
-          works today. Have it reviewed by qualified counsel for every
-          jurisdiction where you market or store data, and update it when your
-          product or vendors change.
-        </p> */}
-
         <section className={sectionClass}>
           <h2 className={h2Class}>Who we are</h2>
           <p>
-            This policy describes the marketing website at this domain (the
-            “Site”) operated in connection with{" "}
-            <strong className="text-[#ffcc66]">Genta</strong>, a local-first AI
-            assistant product. The Site is separate from any desktop application
-            build; it is used for information, demos, and waitlist signups.
+            This policy describes how{" "}
+            <strong className="text-[#ffcc66]">{LEGAL_ENTITY_LABEL}</strong>{" "}
+            (“we”, “us”) handles personal data when you use our marketing
+            website at{" "}
+            <a
+              href={SITE_URL}
+              className={linkClass}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              trygenta.com
+            </a>{" "}
+            and related pages (together, the “Site”). {LEGAL_ENTITY_LABEL} is
+            a local-first AI assistant product. The Site is used for information
+            about the product, interactive demos, and waitlist signups. It is
+            separate from any downloadable or desktop version you may install
+            separately.
+          </p>
+          <p>
+            For applicable data protection laws,{" "}
+            <strong className="text-[#ffcc66]">{LEGAL_ENTITY_LABEL}</strong>,
+            based in {CONTACT_LOCATION}, is the controller of personal data
+            collected through the Site as described here. Use the contact
+            details in the <strong className="text-[#ffcc66]">Contact</strong>{" "}
+            section below for privacy requests and questions about this policy.
           </p>
         </section>
 
@@ -80,102 +95,117 @@ export default function PrivacyPolicyPage() {
             <li>
               <span className="text-[#7aab8a]"># </span>
               <strong className="text-[#e8c266]">Waitlist:</strong> If you join
-              the waiting list, we collect the email address you submit and a
-              timestamp (and, where configured, a reference to which version of
-              this policy you saw). We use this to contact you about Genta and
-              related product news, unless you withdraw consent or we delete
-              your data as described below.
+              the waitlist, we collect the email address you provide, a
+              timestamp, and (where our systems record it) which version of
+              this policy applied at signup. We use this to contact you about
+              Genta and related product news until you withdraw consent, ask us
+              to delete your data, or we no longer need it for that purpose.
             </li>
             <li>
               <span className="text-[#7aab8a]"># </span>
-              <strong className="text-[#e8c266]">Chat experience:</strong> If
-              you use the on-site assistant, your messages may be processed by
-              our configured AI provider to generate replies. Do not paste
-              secrets, health data, or other special-category data into the
-              chat. Retention and subprocessors depend on that provider’s
-              terms—review their documentation and your ChatIQ (or equivalent)
-              settings.
+              <strong className="text-[#e8c266]">On-site assistant:</strong> If
+              you use the chat experience on the Site, your messages are sent
+              to our configured AI provider to generate replies. Do not paste
+              passwords, financial or health information, or other highly
+              sensitive data into the chat. How long content is kept depends on
+              that provider’s terms and our configuration (for example ChatIQ or
+              an equivalent service).
             </li>
             <li>
               <span className="text-[#7aab8a]"># </span>
-              <strong className="text-[#e8c266]">Technical data:</strong> Like
-              most sites, hosting and infrastructure may log IP address, user
-              agent, and similar metadata for security and reliability. Use
-              essential cookies only unless you later add analytics with
-              consent.
+              <strong className="text-[#e8c266]">Technical data:</strong> Our
+              hosting and infrastructure providers may process IP address,
+              browser type, and similar technical data for security, fraud
+              prevention, and reliability. The Site is intended to use only
+              cookies and similar storage needed for basic operation (such as
+              session state for the current browser tab).
             </li>
           </ul>
         </section>
 
         <section className={sectionClass}>
-          <h2 className={h2Class}>Legal bases (EEA / UK style)</h2>
+          <h2 className={h2Class}>Legal bases (EEA / UK)</h2>
           <p>
-            Where GDPR-style laws apply, we rely on{" "}
+            If you are in the European Economic Area, the UK, or another region
+            with similar laws, we process personal data on the following bases
+            where they apply:{" "}
             <strong className="text-[#ffcc66]">consent</strong> for waitlist
-            email and optional marketing contact, and on{" "}
-            <strong className="text-[#ffcc66]">legitimate interests</strong> or{" "}
+            email and similar voluntary signups;{" "}
+            <strong className="text-[#ffcc66]">legitimate interests</strong> in
+            securing and improving the Site; and{" "}
             <strong className="text-[#ffcc66]">contract</strong> where
-            applicable for security logs and operating the Site—adjusted to
-            match your actual setup after legal review.
+            processing is necessary to provide a service you have asked for.
           </p>
         </section>
 
         <section className={sectionClass}>
           <h2 className={h2Class}>Cookies</h2>
           <p>
-            This Site aims to use only cookies and storage needed for the
-            session and core functionality (for example, remembering that you
-            closed the waitlist gate for the current browser tab). If you add
-            analytics or ads, you must disclose them, obtain consent where
-            required, and update this policy.
+            We do not use advertising or cross-site tracking cookies on this
+            Site as of the effective date above. We may use strictly necessary
+            storage (for example so the Site can remember UI choices for your
+            current session or tab). If we introduce optional analytics or
+            similar tools that are not essential, we will update this policy and,
+            where required, ask for your consent before they run.
           </p>
         </section>
 
         <section className={sectionClass}>
           <h2 className={h2Class}>Retention</h2>
           <p>
-            Waitlist data is kept until you ask us to delete it, you
-            unsubscribe, or we no longer need it for the purpose
-            collected—subject to legal retention obligations. Chat logs, if
-            stored by a vendor, follow that vendor’s retention settings.
+            We keep waitlist data only as long as needed to stay in touch about
+            Genta, unless you ask us to delete it earlier or the law requires a
+            different period. Content processed through the on-site assistant is
+            retained according to our AI provider’s settings and our agreements
+            with them.
           </p>
         </section>
 
         <section className={sectionClass}>
           <h2 className={h2Class}>Your rights</h2>
           <p>
-            Depending on where you live, you may have rights to access, correct,
-            delete, or restrict processing of your personal data, to withdraw
-            consent, and to complain to a supervisory authority. Contact us
-            using the details you publish for Genta support or legal inquiries.
+            Depending on where you live, you may have the right to access,
+            correct, or delete your personal data; to restrict or object to
+            certain processing; to withdraw consent where processing is based on
+            consent; and to lodge a complaint with a data protection authority.
+            To exercise these rights or ask a question about this policy,
+            contact us at{" "}
+            <a href={`mailto:${CONTACT_EMAIL}`} className={linkClass}>
+              {CONTACT_EMAIL}
+            </a>
+            .
           </p>
         </section>
 
         <section className={sectionClass}>
           <h2 className={h2Class}>International transfers</h2>
           <p>
-            Providers (e.g. hosting, database, AI API) may process data in
-            countries other than your own. Use appropriate safeguards (such as
-            Standard Contractual Clauses) where required and describe them here
-            after review.
+            We and our service providers may process data in the United States
+            and other countries. Where the law requires safeguards for
+            international transfers (for example Standard Contractual Clauses), we
+            use appropriate measures offered by our vendors or under applicable
+            law.
           </p>
         </section>
 
         <section className={sectionClass}>
           <h2 className={h2Class}>Children</h2>
           <p>
-            The Site is not directed at children under the age where parental
-            consent is required.
+            The Site is not directed at children, and we do not knowingly collect
+            personal data from anyone under the age where parental consent is
+            required in their jurisdiction.
           </p>
         </section>
 
         <section className={sectionClass}>
           <h2 className={h2Class}>Changes</h2>
           <p>
-            We may update this policy from time to time. Material changes should
-            be communicated (for example by email to the waitlist or a notice on
-            the Site). Bump the policy version in your deployment configuration
-            when you do.
+            We may update this policy from time to time. When we make material
+            changes, we will post the revised policy on this Site and adjust the
+            effective date. Where appropriate, we may also notify waitlist
+            subscribers by email. Continued use of the Site after changes become
+            effective constitutes acceptance of the updated policy, except where
+            the law requires a different approach.
           </p>
         </section>
 
@@ -184,9 +214,40 @@ export default function PrivacyPolicyPage() {
         >
           <h2 className={h2Class}>Contact</h2>
           <p>
-            Replace this paragraph with your legal entity name, address, and a
-            contact email for privacy requests.
+            <strong className="text-[#ffcc66]">{LEGAL_ENTITY_LABEL}</strong> is
+            the legal entity responsible for personal data collected through
+            this Site. For privacy requests (including access, correction,
+            deletion, or withdrawal of consent where applicable), or any question
+            about how we process personal data, contact us using:
           </p>
+          <ul className="list-none space-y-2 border-l-2 border-[#4a6b58] pl-4 text-[#c9a85e]">
+            <li>
+              <span className="text-[#7aab8a]"># </span>
+              <strong className="text-[#e8c266]">{LEGAL_ENTITY_LABEL}</strong>{" "}
+              (data controller for this Site)
+            </li>
+            <li>
+              <span className="text-[#7aab8a]"># </span>
+              {CONTACT_LOCATION}
+            </li>
+            <li>
+              <span className="text-[#7aab8a]"># </span>
+              <a
+                href={SITE_URL}
+                className={linkClass}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                trygenta.com
+              </a>
+            </li>
+            <li>
+              <span className="text-[#7aab8a]"># </span>
+              <a href={`mailto:${CONTACT_EMAIL}`} className={linkClass}>
+                {CONTACT_EMAIL}
+              </a>
+            </li>
+          </ul>
         </section>
       </div>
     </div>
