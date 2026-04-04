@@ -752,6 +752,7 @@ export default function HomeClient() {
 
         <form
           className="mt-4 shrink-0 border-t border-[#4a6b58] bg-[#080602] pt-4"
+          autoComplete="off"
           onSubmit={(e) => {
             e.preventDefault();
             void onSubmit(input);
@@ -765,12 +766,17 @@ export default function HomeClient() {
             <input
               ref={inputRef}
               id="chat-input"
+              name="genta-chat-prompt"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onFocus={() => {
                 void unlock();
               }}
               disabled={isTyping || revealingUserPrompt}
+              autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="off"
+              spellCheck={false}
               placeholder="Type a prompt and press Enter..."
               className="w-full bg-transparent text-[#ffcc66] outline-none placeholder:text-[#b8892e]/60 disabled:opacity-40"
             />
