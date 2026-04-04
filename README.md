@@ -27,48 +27,45 @@ Other scripts: `npm run build`, `npm run start`, `npm run lint`.
 
 Signups go to **`genta_waitlist`** via `POST /api/waitlist` using the **service role** on the server (`SUPABASE_SERVICE_ROLE_KEY`). Copy [`.env.example`](.env.example) to `.env.local` and set `NEXT_PUBLIC_SUPABASE_URL` plus the service role key.
 
-Apply the schema to your linked project:
+The waitlist UI requires agreement to the **[Privacy Policy](/privacy)** (opens in a new tab from the dialog). The policy page is a **template**: have it reviewed by counsel for your jurisdictions. Set **`PRIVACY_POLICY_VERSION`** (e.g. a date string) so stored signups record which version the user saw.
+
+Waitlist schema for this app lives in **one** migration: `supabase/migrations/20260404180000_genta_waitlist.sql` (table, privacy columns, indexes, RLS). It is **idempotent** (`if not exists` / `add column if not exists`). If you created the table earlier by hand, you can still run that file in the SQL editor to align columns.
+
+Apply via CLI when migration history matches:
 
 ```bash
 supabase db push
 ```
 
-### `db push`: “Remote migration versions not found in local migrations directory”
+### Shared Supabase project (two apps, one database)
 
-That means the linked project’s migration history (rows in `supabase_migrations.schema_migrations`) references versions that **are not** files under `supabase/migrations/` in this repo—common if the project was used from another machine, the dashboard, or an older CLI layout.
+Migration history is **per project**, not per app. This repo includes **`001_shared_project_peer_placeholder.sql` … `018_…`** — no-op stubs so local files match versions **001–018** already recorded on the shared remote (from your other app). They do **not** recreate that app’s schema; **do not** run a full migration chain on an empty database without that app’s real SQL.
 
-1. **See the mismatch**
+Then **`20260404180000_genta_waitlist.sql`** is this site’s migration. After stubs are committed, run:
 
-   ```bash
-   supabase migration list
-   ```
+```bash
+supabase migration list   # Local and Remote columns should align for 001–018
+supabase db push          # Applies 20260404180000 if not yet on remote (often a no-op if you created the table in SQL Editor)
+```
 
-   Note every version that appears as applied **remotely** but missing **locally**.
+**Shell gotchas**
 
-2. **Preferred: align from production**
+- Do not paste placeholder text like `<exact versions>` — the shell treats `<` as redirection (`zsh: no such file or directory: exact`).
+- **`supabase migration repair` argument order** is **`repair <versions…> --status reverted`**, not `repair --status reverted 001 …` (the error hint is backwards for some CLI versions).
 
-   ```bash
-   supabase db pull
-   ```
+**Alternatives (coordinate with the other app’s owners)**
 
-   Accept prompts to reconcile history. You should get migration file(s) that match what’s already on the server. Then run `supabase db push` again so **`20260404180000_create_genta_waitlist.sql`** applies if the waitlist table is not already in the pulled schema.
+1. Replace the stub files with **real** copies of the other repo’s `001`–`018` SQL (same names), if you want local files to match what actually ran.
 
-3. **Alternative: drop only the ghost history rows** (use when you’re sure the live DB already reflects those old migrations and you don’t have the original SQL files)
+2. **Repair** remote history instead of stubs (does not undo schema):  
+   `supabase migration repair 001 002 … 018 --status reverted`  
+   then `db push` — only if everyone agrees those rows can be removed from history.
 
-   Mark each orphan version **reverted** using the **exact version strings** from `migration list` (ignore error text that puts `--status` first; the CLI expects **versions before the flag**):
+3. **`supabase db pull`** — another way to sync local files to remote; review with your team before committing.
 
-   ```bash
-   supabase migration repair 20230103054303 20230103054304 --status reverted
-   ```
+### Fast unblock (no CLI)
 
-   Repeat until `migration list` is clean, then:
-
-   ```bash
-   supabase db push
-   ```
-
-4. **Fast unblock (no CLI history fix)**  
-   Run the SQL inside `supabase/migrations/20260404180000_create_genta_waitlist.sql` in the Supabase Dashboard **SQL Editor**. Signups work immediately. You should still do step 2 or 3 before relying on `db push` for future migrations.
+Run the contents of `supabase/migrations/20260404180000_genta_waitlist.sql` in the Supabase **SQL Editor**. Fix CLI history when you can so `db push` stays usable.
 
 Optional: `WAITLIST_WEBHOOK_URL` still runs **after** a successful Supabase insert (Slack, Zapier, etc.); webhook failure is logged only so the user still sees success.
 

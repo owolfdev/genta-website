@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
+import Link from "next/link";
+import { LEGAL_ROUTES } from "@/lib/legalRoutes";
 import { WAITLIST_OVERLAY } from "@/lib/shellConfig";
 
 /**
@@ -48,6 +50,8 @@ export function WaitlistOverlay({ className, open, onDismiss }: Props) {
     "idle" | "submitting" | "success" | "error"
   >("idle");
   const [errorMessage, setErrorMessage] = useState("");
+  const [privacyAccepted, setPrivacyAccepted] = useState(false);
+  const consentId = useId();
 
   useEffect(() => {
     if (!open) {
@@ -83,13 +87,18 @@ export function WaitlistOverlay({ className, open, onDismiss }: Props) {
       setStatus("error");
       return;
     }
+    if (!privacyAccepted) {
+      setErrorMessage(WAITLIST_OVERLAY.privacyConsentError);
+      setStatus("error");
+      return;
+    }
     setStatus("submitting");
     setErrorMessage("");
     try {
       const res = await fetch("/api/waitlist", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: trimmed }),
+        body: JSON.stringify({ email: trimmed, privacyAccepted: true }),
       });
       const data = (await res.json().catch(() => ({}))) as {
         error?: { message?: string };
@@ -162,6 +171,42 @@ export function WaitlistOverlay({ className, open, onDismiss }: Props) {
             className="mt-6 space-y-3"
             onSubmit={(e) => void onSubmitWaitlist(e)}
           >
+            <p className="text-[0.78rem] leading-relaxed text-[#c9a85e]/95">
+              {WAITLIST_OVERLAY.privacyNoticeBeforeLink}{" "}
+              <Link
+                href={LEGAL_ROUTES.privacyPolicy}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[#7aab8a] underline decoration-[#4a6b58] underline-offset-2 transition hover:text-[#9fcbad]"
+              >
+                {WAITLIST_OVERLAY.privacyPolicyLinkText}
+              </Link>
+              {WAITLIST_OVERLAY.privacyNoticeAfterLink}
+            </p>
+
+            <div className="flex gap-2.5">
+              <input
+                id={consentId}
+                type="checkbox"
+                checked={privacyAccepted}
+                onChange={(e) => {
+                  setPrivacyAccepted(e.target.checked);
+                  if (status === "error") {
+                    setStatus("idle");
+                    setErrorMessage("");
+                  }
+                }}
+                disabled={status === "submitting" || status === "success"}
+                className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer rounded border-[#4a6b58] bg-[#0c0a06] text-[#7aab8a] accent-[#7aab8a] disabled:cursor-not-allowed disabled:opacity-50"
+              />
+              <label
+                htmlFor={consentId}
+                className="cursor-pointer text-[0.78rem] leading-snug text-[#c9a85e]/95"
+              >
+                {WAITLIST_OVERLAY.privacyConsentLabel}
+              </label>
+            </div>
+
             <label
               className="block text-[0.7rem] tracking-wider text-[#b8892e]"
               htmlFor="waitlist-email"
@@ -184,9 +229,10 @@ export function WaitlistOverlay({ className, open, onDismiss }: Props) {
                   setErrorMessage("");
                 }
               }}
-              disabled={status === "submitting"}
+              disabled={status === "submitting" || status === "success"}
               className="w-full border border-[#4a6b58] bg-[#0c0a06] px-3 py-2.5 text-[0.95rem] text-[#ffcc66] outline-none ring-0 placeholder:text-[#b8892e]/45 focus:border-[#7aab8a] disabled:opacity-50"
             />
+
             {errorMessage ? (
               <p className="text-[0.8rem] text-[#c97a6a]" role="alert">
                 {errorMessage}
@@ -199,7 +245,7 @@ export function WaitlistOverlay({ className, open, onDismiss }: Props) {
             ) : null}
             <button
               type="submit"
-              disabled={status === "submitting"}
+              disabled={status === "submitting" || status === "success"}
               className="w-full border border-[#b8892e] bg-[#b8892e]/10 py-2.5 text-xs font-normal uppercase tracking-[0.2em] text-[#ffcc66] transition hover:bg-[#b8892e]/20 disabled:cursor-not-allowed disabled:opacity-40"
             >
               {status === "submitting"

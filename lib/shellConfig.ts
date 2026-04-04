@@ -13,6 +13,8 @@ export const SHELL_UI = {
   /** Stops streamed / revealed assistant output and re-enables input (see home-client). */
   interruptOutputLabel: "Stop",
   interruptOutputAriaLabel: "Stop assistant output",
+  /** Persistent footer link to the privacy policy. */
+  privacyPolicyLinkLabel: "Privacy",
 } as const;
 
 /**
@@ -41,6 +43,18 @@ export const WAITLIST_OVERLAY = {
   emailPlaceholder: "you@domain.com",
   submitLabel: "Join the waiting list",
   dismissLabel: "Chat With Genta Assistant",
+  /**
+   * Shown above the email field. The UI appends a “Privacy Policy” link (new tab) after this sentence.
+   * Keep factual; have counsel review for your jurisdictions.
+   */
+  privacyNoticeBeforeLink:
+    "We’ll use your email only to contact you about Genta and related product news. For how we process personal data and your rights, see our",
+  privacyPolicyLinkText: "Privacy Policy",
+  /** Visually hidden suffix after the link (e.g. closing sentence). */
+  privacyNoticeAfterLink: ".",
+  /** Checkbox label; the notice above includes the policy link. */
+  privacyConsentLabel: "I agree to the Privacy Policy and want to join the waiting list.",
+  privacyConsentError: "Please confirm you agree to the Privacy Policy to continue.",
   /** `sessionStorage` key; value {@link WAITLIST_GATE_SESSION_VALUE} means “don’t auto-open on load”. */
   sessionStorageKey: "genta-waitlist-overlay",
 } as const;

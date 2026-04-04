@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { Share_Tech_Mono } from "next/font/google";
 import {
   parseBotProtocolToSegments,
@@ -12,6 +13,7 @@ import { conversationIdFromChatiqJson, welcomeTextFromChatiqJson } from "@/lib/c
 import { consumeChatiqSseStream } from "@/lib/chatiqStream";
 import { revealBufferedBotText } from "@/lib/revealBotBuffer";
 import { WaitlistGateScrim, WaitlistOverlay } from "@/components/WaitlistOverlay";
+import { LEGAL_ROUTES } from "@/lib/legalRoutes";
 import {
   ASSISTANT_WELCOME_FALLBACK_TEXT,
   BOT_INLINE_DIRECTIVES,
@@ -173,6 +175,8 @@ function readWaitlistOpenFromSession(): boolean {
 export default function HomeClient() {
   /** Client-only bundle (`page.tsx` uses `dynamic` `ssr:false`) so this runs once with `sessionStorage` — no SSR HTML flash. */
   const [waitlistOpen, setWaitlistOpen] = useState(readWaitlistOpenFromSession);
+  /** Bumps when the user explicitly reopens the waitlist so the dialog remounts with fresh consent state. */
+  const [waitlistDialogEpoch, setWaitlistDialogEpoch] = useState(0);
   const conversationIdRef = useRef<string | null>(null);
   /** Boot welcome row removed from the log on the user’s first message (thread continues via `conversation_id`). */
   const welcomeMessageIdRef = useRef<string | null>(null);
@@ -204,6 +208,7 @@ export default function HomeClient() {
   }, []);
 
   const openWaitlist = useCallback(() => {
+    setWaitlistDialogEpoch((e) => e + 1);
     setWaitlistOpen(true);
   }, []);
 
@@ -805,9 +810,19 @@ export default function HomeClient() {
             </button>
           </div>
         </form>
+
+        <footer className="mt-3 shrink-0 border-t border-[#4a6b58]/50 pt-3 text-center text-[0.65rem] tracking-[0.2em] text-[#6a8a72] sm:text-xs">
+          <Link
+            href={LEGAL_ROUTES.privacyPolicy}
+            className="text-[#7aab8a] underline decoration-[#4a6b58] underline-offset-4 transition hover:text-[#9fcbad]"
+          >
+            {SHELL_UI.privacyPolicyLinkLabel}
+          </Link>
+        </footer>
       </main>
 
       <WaitlistOverlay
+        key={waitlistDialogEpoch}
         className={terminalFont.className}
         open={waitlistOpen}
         onDismiss={dismissWaitlist}

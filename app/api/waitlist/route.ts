@@ -5,7 +5,14 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const WAITLIST_SOURCE = "genta-website-waitlist";
 
-async function forwardToWebhook(email: string): Promise<boolean> {
+function policyVersion(): string {
+  return process.env.PRIVACY_POLICY_VERSION?.trim() || "1.0";
+}
+
+async function forwardToWebhook(
+  email: string,
+  consent: { at: string; version: string },
+): Promise<boolean> {
   const webhook = process.env.WAITLIST_WEBHOOK_URL?.trim();
   if (!webhook) {
     return true;
@@ -22,6 +29,9 @@ async function forwardToWebhook(email: string): Promise<boolean> {
       body: JSON.stringify({
         email,
         source: WAITLIST_SOURCE,
+        privacy_accepted: true,
+        privacy_accepted_at: consent.at,
+        privacy_policy_version: consent.version,
       }),
     });
     if (!upstream.ok) {
@@ -56,13 +66,31 @@ export async function POST(req: Request) {
     );
   }
 
+  if (o.privacyAccepted !== true) {
+    return NextResponse.json(
+      {
+        error: {
+          code: "PRIVACY_REQUIRED",
+          message: "Please confirm you agree to the Privacy Policy.",
+        },
+      },
+      { status: 400 },
+    );
+  }
+
   const email = rawEmail.toLowerCase();
+  const consentAt = new Date().toISOString();
+  const consentVersion = policyVersion();
+  const consent = { at: consentAt, version: consentVersion };
+
   const supabase = createSupabaseAdmin();
 
   if (supabase) {
     const { error } = await supabase.from("genta_waitlist").insert({
       email,
       source: WAITLIST_SOURCE,
+      privacy_accepted_at: consentAt,
+      privacy_policy_version: consentVersion,
     });
 
     const duplicate =
@@ -76,7 +104,7 @@ export async function POST(req: Request) {
       );
     }
 
-    void forwardToWebhook(email).then((ok) => {
+    void forwardToWebhook(email, consent).then((ok) => {
       if (!ok) {
         console.warn("[genta-waitlist] email stored in Supabase but webhook failed");
       }
@@ -87,7 +115,7 @@ export async function POST(req: Request) {
 
   const webhook = process.env.WAITLIST_WEBHOOK_URL?.trim();
   if (webhook) {
-    const ok = await forwardToWebhook(email);
+    const ok = await forwardToWebhook(email, consent);
     if (!ok) {
       return NextResponse.json(
         { error: { code: "WEBHOOK_ERROR", message: "Could not save signup. Try again later." } },
