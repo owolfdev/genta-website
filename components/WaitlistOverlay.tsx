@@ -111,23 +111,32 @@ export function WaitlistOverlay({ className, open, onDismiss }: Props) {
   }
 
   return (
-    <div className="pointer-events-none fixed inset-0 z-[101] flex items-center justify-center p-4 sm:p-6">
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-        className={`pointer-events-auto relative z-[1] w-full max-w-[26rem] border border-[#b8892e] bg-[#080602] p-6 shadow-[0_0_40px_rgba(184,137,46,0.12),inset_0_0_0_1px_rgba(255,204,102,0.06)] [text-shadow:0_0_10px_rgba(255,204,102,0.35)] sm:p-7 ${className}`}
-        onClick={(e) => e.stopPropagation()}
-      >
+    <div
+      className="fixed inset-0 z-[101] overflow-y-auto overflow-x-hidden overscroll-y-contain"
+      style={{
+        paddingTop: "max(1rem, env(safe-area-inset-top))",
+        paddingBottom: "max(1rem, env(safe-area-inset-bottom))",
+        paddingLeft: "max(1rem, env(safe-area-inset-left))",
+        paddingRight: "max(1rem, env(safe-area-inset-right))",
+      }}
+    >
+      <div className="flex min-h-full items-start justify-center py-2 pb-10 sm:items-center sm:py-6">
         <div
-          className="pointer-events-none absolute inset-0 opacity-[0.07]"
-          aria-hidden
-          style={{
-            background:
-              "repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.5) 2px, rgba(0,0,0,0.5) 4px)",
-          }}
-        />
-        <div className="relative">
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby={titleId}
+          className={`relative z-[1] my-2 w-full max-w-[min(26rem,calc(100vw-2rem))] max-h-[calc(100dvh-2.5rem)] overflow-y-auto overscroll-y-contain border border-[#b8892e] bg-[#080602] p-5 shadow-[0_0_40px_rgba(184,137,46,0.12),inset_0_0_0_1px_rgba(255,204,102,0.06)] [text-shadow:0_0_10px_rgba(255,204,102,0.35)] sm:my-4 sm:max-w-[min(34rem,92vw)] sm:max-h-[calc(100dvh-4rem)] sm:p-6 md:max-w-[min(40rem,90vw)] md:p-7 lg:max-w-[min(44rem,88vw)] ${className}`}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div
+            className="pointer-events-none absolute inset-0 opacity-[0.07]"
+            aria-hidden
+            style={{
+              background:
+                "repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.5) 2px, rgba(0,0,0,0.5) 4px)",
+            }}
+          />
+          <div className="relative">
           <p className="text-[0.65rem] tracking-[0.35em] text-[#7aab8a]">
             MARKETING CHANNEL
           </p>
@@ -206,6 +215,7 @@ export function WaitlistOverlay({ className, open, onDismiss }: Props) {
           >
             {WAITLIST_OVERLAY.dismissLabel}
           </button>
+          </div>
         </div>
       </div>
     </div>
