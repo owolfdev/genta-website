@@ -211,7 +211,7 @@ export function WaitlistOverlay({ className, open, onDismiss }: Props) {
             ) : null}
           </form>
 
-          <div className="mt-3 space-y-3">
+          <div className="mt-5 flex flex-col gap-4 sm:mt-6 sm:gap-5">
             <button
               type="button"
               onClick={onDismiss}
