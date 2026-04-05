@@ -44,7 +44,7 @@ body {
   }
 }
 
-/* Landing hero — primary CTA: flat sage ring + subtle glow pulse (same rest/attack time as 8s baseline; fade ~2× via longer cycle). */
+/* Landing hero — primary CTA: flat sage ring + subtle glow pulse (~3.5s loop — 3× more frequent than the prior 10.56s cycle). */
 @keyframes landing-waitlist-pulse {
   0%,
   100% {
@@ -72,7 +72,7 @@ body {
   padding: 1px;
   box-sizing: border-box;
   background: rgb(74, 107, 88);
-  animation: landing-waitlist-pulse 10.56s cubic-bezier(0.45, 0, 0.25, 1) infinite;
+  animation: landing-waitlist-pulse 3.52s cubic-bezier(0.45, 0, 0.25, 1) infinite;
 }
 
 /*

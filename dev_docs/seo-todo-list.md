@@ -20,13 +20,13 @@ Check items off as you complete or close them. “Investigate” means confirm c
 
 ## 3. Investigate: icons and share images
 
-- [x] Add **`src/app/icon`** / **`apple-icon`** (or `public/favicon.ico`) so browser tabs and bookmarks are branded. (**`public/icons/`** — `favicon-16.png`, `favicon-32.png`, `favicon.ico`, **`apple-touch-icon.png`**, **`android-192.png`**, **`android-512.png`**; **`public/favicon.ico`** copy for legacy **`/favicon.ico`**; **`site.webmanifest`** with **`metadata.manifest`** in `layout.tsx`.)
-- [ ] Add **`opengraph-image`** / **`twitter-image`** (file- or code-based) so link unfurls show intentional creative, not platform defaults.
+- [x] Add **`src/app/icon`** / **`apple-icon`** (or `public/favicon.ico`) so browser tabs and bookmarks are branded. (**`src/app/favicon.ico`** (Next convention); **`public/icons/`** — PNGs, **`apple-touch-icon.png`**, **`android-192.png`**, **`android-512.png`**; **`public/favicon.ico`** for legacy **`/favicon.ico`**; **`site.webmanifest`** + **`metadata.manifest`** in `layout.tsx`.)
+- [x] Add **`opengraph-image`** / **`twitter-image`** (file- or code-based) so link unfurls show intentional creative, not platform defaults. (**`app/opengraph-image.tsx`** — **`ImageResponse`** 1200×630, brand colors; **`app/twitter-image.tsx`** re-exports the same asset.)
 
 ## 4. Investigate: `robots.txt` and sitemap
 
-- [ ] Add **`src/app/robots.ts`** (or `public/robots.txt`) with correct **`allow`/`disallow`** for production; confirm nothing blocks `/`, `/privacy`, or `/chat` unintentionally.
-- [ ] Add **`src/app/sitemap.ts`** listing public indexable URLs (`/`, `/privacy`, `/chat` if indexable — otherwise exclude chat if you treat it as app-only).
+- [x] Add **`src/app/robots.ts`** (or `public/robots.txt`) with correct **`allow`/`disallow`** for production; confirm nothing blocks `/`, `/privacy`, or `/chat` unintentionally. (**`allow: /`**, **`disallow: /api/`**, **`sitemap`** + **`host`** via **`src/lib/site.ts`** `SITE_ORIGIN`.)
+- [x] Add **`src/app/sitemap.ts`** listing public indexable URLs (`/`, `/privacy`, `/chat` if indexable — otherwise exclude chat if you treat it as app-only). (**`/`, `/chat`, `/contact`, `/privacy`** — drop **`/chat`** here and set chat **`noindex`** if you choose app-only in §5.)
 
 ## 5. Investigate: indexability of `/chat`
 

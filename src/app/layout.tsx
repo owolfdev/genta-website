@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { SITE_ORIGIN } from "@/lib/site";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -16,7 +17,7 @@ const siteDescription =
   "Local-first AI assistant for desktop and mobile — your chat, tools, and memory on your device by default.";
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://trygenta.com"),
+  metadataBase: new URL(SITE_ORIGIN),
   title: {
     default: "Genta",
     template: "%s · Genta",
