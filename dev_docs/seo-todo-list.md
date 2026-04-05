@@ -20,7 +20,7 @@ Check items off as you complete or close them. “Investigate” means confirm c
 
 ## 3. Investigate: icons and share images
 
-- [ ] Add **`src/app/icon`** / **`apple-icon`** (or `public/favicon.ico`) so browser tabs and bookmarks are branded.
+- [x] Add **`src/app/icon`** / **`apple-icon`** (or `public/favicon.ico`) so browser tabs and bookmarks are branded. (**`public/icons/`** — `favicon-16.png`, `favicon-32.png`, `favicon.ico`, **`apple-touch-icon.png`**, **`android-192.png`**, **`android-512.png`**; **`public/favicon.ico`** copy for legacy **`/favicon.ico`**; **`site.webmanifest`** with **`metadata.manifest`** in `layout.tsx`.)
 - [ ] Add **`opengraph-image`** / **`twitter-image`** (file- or code-based) so link unfurls show intentional creative, not platform defaults.
 
 ## 4. Investigate: `robots.txt` and sitemap
