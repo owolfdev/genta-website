@@ -4,6 +4,7 @@ export const metadata: Metadata = {
   title: "Terminal chat",
   description:
     "Try the Genta assistant in your browser — local-first AI, terminal-style chat.",
+  robots: { index: false, follow: true },
   openGraph: {
     title: "Terminal chat · Genta",
     description:

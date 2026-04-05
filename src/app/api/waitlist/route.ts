@@ -77,39 +77,55 @@ async function forwardToWebhook(
   }
 }
 
-export async function POST(req: Request) {
-  let body: unknown;
-  try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json(
-      { error: { code: "INVALID_JSON", message: "Request body must be JSON" } },
-      { status: 400 },
-    );
+type ParsedBody =
+  | { channel: "json"; email: string; privacyAccepted: boolean }
+  | { channel: "form"; email: string; privacyAccepted: boolean };
+
+async function parseWaitlistBody(req: Request): Promise<ParsedBody | { error: NextResponse }> {
+  const ct = (req.headers.get("content-type") ?? "").toLowerCase();
+
+  if (ct.includes("application/json")) {
+    let body: unknown;
+    try {
+      body = await req.json();
+    } catch {
+      return {
+        error: NextResponse.json(
+          { error: { code: "INVALID_JSON", message: "Request body must be JSON" } },
+          { status: 400 },
+        ),
+      };
+    }
+    const o = body as Record<string, unknown>;
+    const email = typeof o.email === "string" ? o.email.trim() : "";
+    const privacyAccepted = o.privacyAccepted === true;
+    return { channel: "json", email, privacyAccepted };
   }
 
-  const o = body as Record<string, unknown>;
-  const rawEmail = typeof o.email === "string" ? o.email.trim() : "";
-  if (!rawEmail || !EMAIL_RE.test(rawEmail)) {
-    return NextResponse.json(
-      { error: { code: "INVALID_EMAIL", message: "A valid email is required" } },
-      { status: 400 },
-    );
+  if (ct.includes("application/x-www-form-urlencoded") || ct.includes("multipart/form-data")) {
+    const fd = await req.formData();
+    const email = String(fd.get("email") ?? "").trim();
+    const pa = fd.get("privacyAccepted");
+    const privacyAccepted = pa === "true" || pa === "on" || pa === "1";
+    return { channel: "form", email, privacyAccepted };
   }
 
-  if (o.privacyAccepted !== true) {
-    return NextResponse.json(
+  return {
+    error: NextResponse.json(
       {
         error: {
-          code: "PRIVACY_REQUIRED",
-          message: "Please confirm you agree to the Privacy Policy.",
+          code: "UNSUPPORTED_MEDIA_TYPE",
+          message: "Use application/json or application/x-www-form-urlencoded.",
         },
       },
-      { status: 400 },
-    );
-  }
+      { status: 415 },
+    ),
+  };
+}
 
-  const email = rawEmail.toLowerCase();
+type SignupFailure = "INVALID_EMAIL" | "PRIVACY_REQUIRED" | "STORE_ERROR" | "WEBHOOK_ERROR";
+
+async function runWaitlistSignup(normalizedEmail: string): Promise<SignupFailure | null> {
   const consentAt = new Date().toISOString();
   const consentVersion = policyVersion();
   const consent = { at: consentAt, version: consentVersion };
@@ -117,7 +133,7 @@ export async function POST(req: Request) {
   const supabase = createSupabaseAdmin();
 
   if (supabase) {
-    const attempts = gentaWaitlistInsertAttempts(email, consentAt, consentVersion);
+    const attempts = gentaWaitlistInsertAttempts(normalizedEmail, consentAt, consentVersion);
     let lastError: { code?: string; message?: string; details?: string; hint?: string } | null =
       null;
 
@@ -148,36 +164,104 @@ export async function POST(req: Request) {
         details: lastError.details,
         hint: lastError.hint,
       });
-      return NextResponse.json(
-        { error: { code: "STORE_ERROR", message: "Could not save signup. Try again later." } },
-        { status: 502 },
-      );
+      return "STORE_ERROR";
     }
 
-    void forwardToWebhook(email, consent).then((ok) => {
+    void forwardToWebhook(normalizedEmail, consent).then((ok) => {
       if (!ok) {
         console.warn("[genta-waitlist] email stored in Supabase but webhook failed");
       }
     });
 
-    return NextResponse.json({ ok: true });
+    return null;
   }
 
   const webhook = process.env.WAITLIST_WEBHOOK_URL?.trim();
   if (webhook) {
-    const ok = await forwardToWebhook(email, consent);
+    const ok = await forwardToWebhook(normalizedEmail, consent);
     if (!ok) {
-      return NextResponse.json(
-        { error: { code: "WEBHOOK_ERROR", message: "Could not save signup. Try again later." } },
-        { status: 502 },
-      );
+      return "WEBHOOK_ERROR";
     }
-    return NextResponse.json({ ok: true });
+    return null;
   }
 
   console.info(
     "[genta-waitlist] signup (set NEXT_PUBLIC_SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY or WAITLIST_WEBHOOK_URL):",
-    email,
+    normalizedEmail,
   );
+  return null;
+}
+
+function jsonError(
+  code: string,
+  message: string,
+  status: number,
+): NextResponse {
+  return NextResponse.json({ error: { code, message } }, { status });
+}
+
+function redirectWithQuery(
+  req: Request,
+  query: Record<string, string>,
+  hash = "waitlist",
+): NextResponse {
+  const u = new URL("/", req.url);
+  for (const [k, v] of Object.entries(query)) {
+    u.searchParams.set(k, v);
+  }
+  u.hash = hash;
+  return NextResponse.redirect(u, 303);
+}
+
+const ERROR_QUERY: Record<SignupFailure, string> = {
+  INVALID_EMAIL: "email",
+  PRIVACY_REQUIRED: "privacy",
+  STORE_ERROR: "store",
+  WEBHOOK_ERROR: "webhook",
+};
+
+const JSON_MESSAGES: Record<SignupFailure, string> = {
+  INVALID_EMAIL: "A valid email is required",
+  PRIVACY_REQUIRED: "Please confirm you agree to the Privacy Policy.",
+  STORE_ERROR: "Could not save signup. Try again later.",
+  WEBHOOK_ERROR: "Could not save signup. Try again later.",
+};
+
+export async function POST(req: Request) {
+  const parsed = await parseWaitlistBody(req);
+  if ("error" in parsed) {
+    return parsed.error;
+  }
+
+  const { channel, email: rawEmail, privacyAccepted } = parsed;
+
+  if (!rawEmail || !EMAIL_RE.test(rawEmail)) {
+    if (channel === "form") {
+      return redirectWithQuery(req, { waitlist_error: ERROR_QUERY.INVALID_EMAIL });
+    }
+    return jsonError("INVALID_EMAIL", JSON_MESSAGES.INVALID_EMAIL, 400);
+  }
+
+  if (!privacyAccepted) {
+    if (channel === "form") {
+      return redirectWithQuery(req, { waitlist_error: ERROR_QUERY.PRIVACY_REQUIRED });
+    }
+    return jsonError("PRIVACY_REQUIRED", JSON_MESSAGES.PRIVACY_REQUIRED, 400);
+  }
+
+  const email = rawEmail.toLowerCase();
+  const fail = await runWaitlistSignup(email);
+  if (fail) {
+    if (channel === "form") {
+      return redirectWithQuery(req, { waitlist_error: ERROR_QUERY[fail] });
+    }
+    const status = fail === "STORE_ERROR" || fail === "WEBHOOK_ERROR" ? 502 : 400;
+    return jsonError(fail, JSON_MESSAGES[fail], status);
+  }
+
+  if (channel === "form") {
+    return redirectWithQuery(req, { waitlist: "success" });
+  }
+
   return NextResponse.json({ ok: true });
 }

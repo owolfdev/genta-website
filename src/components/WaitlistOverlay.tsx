@@ -153,10 +153,11 @@ export function WaitlistOverlay({ className, open, onDismiss }: Props) {
             <WaitlistTaglineInline />
           </p>
           <ul className="mt-4 list-none space-y-2 border-l-2 border-[#4a6b58] pl-3 text-[0.88rem] leading-snug text-[#c9a85e]">
-            {WAITLIST_OVERLAY.benefits.map((line) => (
-              <li key={line}>
+            {WAITLIST_OVERLAY.benefits.map((item) => (
+              <li key={item.headline}>
                 <span className="text-[#7aab8a]"># </span>
-                {line}
+                <span className="text-[#e8c266]">{item.headline}</span>
+                <span className="text-[#c9a85e]"> — {item.supporting}</span>
               </li>
             ))}
           </ul>

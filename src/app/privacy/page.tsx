@@ -132,6 +132,12 @@ export default function PrivacyPolicyPage() {
               session state for the current browser tab).
             </li>
           </ul>
+          <p>
+            We use{" "}
+            <strong className="text-[#ffcc66]">Vercel Web Analytics</strong>{" "}
+            (via our host, Vercel) to see aggregate page views and how people
+            move through the Site. We do not use it for advertising.
+          </p>
         </section>
 
         <section className={sectionClass}>
@@ -155,9 +161,10 @@ export default function PrivacyPolicyPage() {
             We do not use advertising or cross-site tracking cookies on this
             Site as of the effective date above. We may use strictly necessary
             storage (for example so the Site can remember UI choices for your
-            current session or tab). If we introduce optional analytics or
-            similar tools that are not essential, we will update this policy and,
-            where required, ask for your consent before they run.
+            current session or tab). Aggregate traffic is measured with Vercel
+            Web Analytics as described above. If we add other non-essential
+            analytics, we will update this policy and, where required, ask for
+            your consent before they run.
           </p>
         </section>
 

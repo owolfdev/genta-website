@@ -53,12 +53,12 @@ export async function POST(req: Request) {
     );
   }
 
-  if (o.privacyAccepted !== true) {
+  if (o.humanConfirmed !== true) {
     return NextResponse.json(
       {
         error: {
-          code: "PRIVACY_REQUIRED",
-          message: "Please confirm you agree to the Privacy Policy.",
+          code: "HUMAN_CHECK_REQUIRED",
+          message: "Please confirm you're human.",
         },
       },
       { status: 400 },

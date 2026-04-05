@@ -8,9 +8,21 @@ import { WAITLIST_OVERLAY } from "@/lib/shellConfig";
 type Props = {
   /** Hero: compact copy; default: same strings as the in-chat waitlist overlay. */
   variant?: "hero" | "default";
+  /** From `/?waitlist=success` or `waitlist_error` after native form POST (no-JS). */
+  urlFlash?: "success" | "email" | "privacy" | "store" | "webhook" | null;
 };
 
-export function LandingWaitlistForm({ variant = "default" }: Props) {
+const URL_FLASH_ERROR_TEXT: Record<
+  Exclude<NonNullable<Props["urlFlash"]>, "success">,
+  string
+> = {
+  email: "A valid email is required.",
+  privacy: "Please confirm you agree to the Privacy Policy.",
+  store: "Could not save signup. Try again later.",
+  webhook: "Could not save signup. Try again later.",
+};
+
+export function LandingWaitlistForm({ variant = "default", urlFlash = null }: Props) {
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<
     "idle" | "submitting" | "success" | "error"
@@ -63,14 +75,32 @@ export function LandingWaitlistForm({ variant = "default" }: Props) {
   const inputId =
     variant === "hero" ? "landing-waitlist-email-hero" : "landing-waitlist-email";
 
+  const showUrlSuccess = urlFlash === "success";
+  const urlErrorText =
+    urlFlash && urlFlash !== "success" ? URL_FLASH_ERROR_TEXT[urlFlash] : null;
+
   return (
     <form
+      action="/api/waitlist"
+      method="post"
       className={
         variant === "hero" ? "mt-8 space-y-3 text-left" : "mt-5 space-y-4 text-left"
       }
       onSubmit={(e) => void onSubmit(e)}
-      noValidate
     >
+      <input type="hidden" name="privacyAccepted" value="true" />
+
+      {showUrlSuccess ? (
+        <p className="text-[0.85rem] text-[#7aab8a]" role="status">
+          You’re on the list. We’ll be in touch.
+        </p>
+      ) : null}
+      {urlErrorText ? (
+        <p className="text-[0.8rem] text-[#c97a6a]" role="alert">
+          {urlErrorText}
+        </p>
+      ) : null}
+
       <div>
         <label
           className="mb-2 block text-[0.875rem] leading-relaxed text-[#d4a85e] sm:text-[0.95rem]"
@@ -94,12 +124,13 @@ export function LandingWaitlistForm({ variant = "default" }: Props) {
                 setErrorMessage("");
               }
             }}
-            disabled={status === "submitting" || status === "success"}
+            disabled={status === "submitting" || status === "success" || showUrlSuccess}
+            required
             className="min-h-11 min-w-0 flex-1 border border-[#4a6b58] bg-[#0c0a06] px-3 py-2.5 text-base leading-normal text-[#ffcc66] outline-none ring-0 placeholder:text-[#b8892e]/50 focus:border-[#7aab8a] disabled:opacity-50 sm:min-h-0"
           />
           <button
             type="submit"
-            disabled={status === "submitting" || status === "success"}
+            disabled={status === "submitting" || status === "success" || showUrlSuccess}
             className="min-h-11 shrink-0 border border-[#4a6b58] bg-[#0c0a06] px-4 py-2.5 text-sm font-normal tracking-wide text-[#ffcc66] transition hover:border-[#7aab8a] focus-visible:border-[#7aab8a] focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-40 sm:min-h-0 sm:self-stretch sm:px-5 sm:text-[0.85rem]"
           >
             {status === "submitting" ? "Sending…" : WAITLIST_OVERLAY.submitLabel}

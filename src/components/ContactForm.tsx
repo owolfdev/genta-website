@@ -1,9 +1,6 @@
 "use client";
 
-import Link from "next/link";
 import { useState } from "react";
-import { LEGAL_ROUTES } from "@/lib/legalRoutes";
-import { WAITLIST_OVERLAY } from "@/lib/shellConfig";
 
 const inputClass =
   "w-full border border-[#4a6b58] bg-[#0c0a06] px-3 py-2.5 text-[0.95rem] text-[#ffcc66] outline-none ring-0 placeholder:text-[#b8892e]/45 focus:border-[#7aab8a] disabled:opacity-50";
@@ -13,14 +10,14 @@ export function ContactForm() {
   const [email, setEmail] = useState("");
   const [company, setCompany] = useState("");
   const [message, setMessage] = useState("");
-  const [privacyAccepted, setPrivacyAccepted] = useState(false);
+  const [humanConfirmed, setHumanConfirmed] = useState(false);
   const [status, setStatus] = useState<"idle" | "submitting" | "success" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState("");
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!privacyAccepted) {
-      setErrorMessage("Please confirm you agree to the Privacy Policy.");
+    if (!humanConfirmed) {
+      setErrorMessage("Please confirm you're human.");
       setStatus("error");
       return;
     }
@@ -35,7 +32,7 @@ export function ContactForm() {
           email: email.trim(),
           company: company.trim() || undefined,
           message: message.trim(),
-          privacyAccepted: true,
+          humanConfirmed: true,
         }),
       });
       const data = (await res.json().catch(() => ({}))) as {
@@ -145,9 +142,9 @@ export function ContactForm() {
       <label className="flex cursor-pointer items-start gap-3 text-[0.75rem] leading-relaxed text-[#b8892e]/95 sm:text-[0.8rem]">
         <input
           type="checkbox"
-          checked={privacyAccepted}
+          checked={humanConfirmed}
           onChange={(e) => {
-            setPrivacyAccepted(e.target.checked);
+            setHumanConfirmed(e.target.checked);
             if (status === "error") {
               setStatus("idle");
               setErrorMessage("");
@@ -156,16 +153,7 @@ export function ContactForm() {
           disabled={disabled}
           className="mt-1 h-3.5 w-3.5 shrink-0 border border-[#4a6b58] bg-[#0c0a06] accent-[#7aab8a]"
         />
-        <span>
-          I agree to the{" "}
-          <Link
-            href={LEGAL_ROUTES.privacyPolicy}
-            className="text-[#7aab8a] underline decoration-[#4a6b58] underline-offset-2 transition hover:text-[#9fcbad]"
-          >
-            {WAITLIST_OVERLAY.privacyPolicyLinkText}
-          </Link>{" "}
-          for processing this message.
-        </span>
+        <span>I am a human.</span>
       </label>
 
       <button

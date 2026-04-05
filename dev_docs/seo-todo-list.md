@@ -26,23 +26,23 @@ Check items off as you complete or close them. “Investigate” means confirm c
 ## 4. Investigate: `robots.txt` and sitemap
 
 - [x] Add **`src/app/robots.ts`** (or `public/robots.txt`) with correct **`allow`/`disallow`** for production; confirm nothing blocks `/`, `/privacy`, or `/chat` unintentionally. (**`allow: /`**, **`disallow: /api/`**, **`sitemap`** + **`host`** via **`src/lib/site.ts`** `SITE_ORIGIN`.)
-- [x] Add **`src/app/sitemap.ts`** listing public indexable URLs (`/`, `/privacy`, `/chat` if indexable — otherwise exclude chat if you treat it as app-only). (**`/`, `/chat`, `/contact`, `/privacy`** — drop **`/chat`** here and set chat **`noindex`** if you choose app-only in §5.)
+- [x] Add **`src/app/sitemap.ts`** listing public indexable URLs (`/`, `/privacy`, `/chat` if indexable — otherwise exclude chat if you treat it as app-only). (**`/`, `/contact`, `/privacy`** — **`/chat`** omitted; see §5.)
 
 ## 5. Investigate: indexability of `/chat`
 
-- [ ] Decide whether **`/chat`** should be **indexed** (rankable “try the product”) or **noindex** (pure app surface). If noindex, set **`robots: { index: false, follow: true }`** (or stricter) on that segment only and reflect that in the sitemap.
+- [x] Decide whether **`/chat`** should be **indexed** (rankable “try the product”) or **noindex** (pure app surface). If noindex, set **`robots: { index: false, follow: true }`** (or stricter) on that segment only and reflect that in the sitemap. (**Chosen:** **`noindex`, `follow`** on **`app/chat/layout.tsx`**; **`/chat`** not listed in **`sitemap.ts`**.)
 
 ## 6. Investigate: structured data (optional)
 
-- [ ] Evaluate **JSON-LD** for `Organization` / `WebSite` (and `WebPage` on landing) if you want richer results; keep it minimal and accurate.
+- [x] Evaluate **JSON-LD** for `Organization` / `WebSite` (and `WebPage` on landing) if you want richer results; keep it minimal and accurate. (**`LandingJsonLd`** on **`/`** only — `@graph` with **`Organization`** + **`logo`**, **`WebSite`**, **`WebPage`**; copy from **`WAITLIST_OVERLAY.tagline`**; logo URL **`/icons/android-512.png`**.)
 
 ## 7. Investigate: forms and progressive enhancement
 
-- [ ] If the landing waitlist stays a client form, consider a **Server Action** or **POST** handler that accepts **`application/x-www-form-urlencoded`** so a no-JS or crawler-friendly `<form>` can still submit (accessibility + resilience).
+- [x] If the landing waitlist stays a client form, consider a **Server Action** or **POST** handler that accepts **`application/x-www-form-urlencoded`** so a no-JS or crawler-friendly `<form>` can still submit (accessibility + resilience). (**`POST /api/waitlist`** accepts **JSON** (overlay + JS fetch) and **form POST**; native **`action`/`method`/`hidden privacyAccepted`** on **`LandingWaitlistForm`**; **JS** `preventDefault` + JSON fetch when enabled; **303** redirects to **`/?…#waitlist`** with **`waitlist=success`** or **`waitlist_error`** codes; **`page.tsx`** reads **`searchParams`** and passes **`urlFlash`**.)
 
 ## 8. Investigate: performance signals that affect SEO
 
-- [ ] Run **Lighthouse** (or similar) on `/` after the landing ships; tune **LCP** (hero/static content), font loading, and JS shipped to the landing route (keep landing lean).
+- [x] Run **Lighthouse** (or similar) on `/` after the landing ships; tune **LCP** (hero/static content), font loading, and JS shipped to the landing route (keep landing lean). (**Lighthouse on `/`:** Performance **98**, Accessibility **100**, Best Practices **100**, SEO **100** — no further tuning required unless chasing the last performance points.)
 
 ---
 

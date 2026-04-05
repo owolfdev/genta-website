@@ -42,12 +42,20 @@ export const WAITLIST_OVERLAY = {
   taglineAfterWaitlistWord: WAITLIST_TAGLINE_AFTER_WAITLIST_WORD,
   /** Landing page — heading above the benefit cards (middle section). */
   featuresSectionTitle: "Why Genta",
+  /** Homepage + waitlist overlay — short headline with supporting line (landing stacks these vertically). */
   benefits: [
-    "Private by default: run models locally; cloud optional.",
-    // "Your files and notes in one place, with retrieval you can trace.",
-    "Pick the stack that fits you: model-agnostic, built for real work.",
-    "Off grid: use Genta offline and on your own terms.",
-    "Genta is coming soon. Join the waitlist to get news and updates.",
+    {
+      headline: "Private by default",
+      supporting: "Run models locally; cloud stays optional when you want it.",
+    },
+    {
+      headline: "Off grid",
+      supporting: "Use Genta offline and on your own terms.",
+    },
+    {
+      headline: "Pick your stack",
+      supporting: "Model-agnostic, built for real work.",
+    },
   ],
   /** `<label htmlFor="waitlist-email">` — no link; privacy line sits below the input row. */
   emailLabel:
@@ -68,6 +76,8 @@ export const WAITLIST_OVERLAY = {
   dismissLabel: "Chat With Genta Assistant",
   /** Primary CTA on the marketing landing page (see `CHAT_ROUTE` in `lib/routes.ts`). */
   landingChatCtaLabel: "Open terminal chat",
+  /** Marketing header contact icon — shadcn/Radix tooltip. */
+  headerContactTooltip: "Contact",
   /** Mid-page section heading — browser-based assistant demo. */
   landingChatSectionTitle: "Chat with Genta",
   landingChatSectionBlurb:

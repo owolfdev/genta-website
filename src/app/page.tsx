@@ -6,7 +6,8 @@ import { WaitlistTaglineInline } from "@/components/WaitlistTaglineInline";
 import { MothershipCountdown } from "@/components/MothershipCountdown";
 import { CHAT_ROUTE } from "@/lib/routes";
 import { LEGAL_ROUTES } from "@/lib/legalRoutes";
-import { TerminalChatHeaderIcon } from "@/components/icons/TerminalChatHeaderIcon";
+import { LandingHeaderNav } from "@/components/LandingHeaderNav";
+import { LandingJsonLd } from "@/components/LandingJsonLd";
 import { LAUNCH_COUNTDOWN, WAITLIST_OVERLAY } from "@/lib/shellConfig";
 
 const terminalFont = Share_Tech_Mono({
@@ -28,10 +29,10 @@ export const metadata: Metadata = {
   },
 };
 
-function CheckIcon() {
+function CheckIcon({ className }: { className?: string }) {
   return (
     <svg
-      className="mt-0.5 h-5 w-5 shrink-0 text-[#7aab8a]"
+      className={className ?? "mt-0.5 h-5 w-5 shrink-0 text-[#7aab8a]"}
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
@@ -45,32 +46,42 @@ function CheckIcon() {
   );
 }
 
-function ContactMailHeaderIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
-      <rect width="20" height="16" x="2" y="4" rx="2" />
-      <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
-    </svg>
-  );
-}
-
 const linkMuted =
   "text-[0.75rem] tracking-[0.2em] text-[#7aab8a] underline decoration-[#4a6b58] underline-offset-4 transition hover:text-[#9fcbad] sm:text-xs";
 
-export default function LandingPage() {
+type LandingSearchParams = Promise<{
+  waitlist?: string | string[];
+  waitlist_error?: string | string[];
+}>;
+
+function waitlistUrlFlash(sp: {
+  waitlist?: string | string[];
+  waitlist_error?: string | string[];
+}): "success" | "email" | "privacy" | "store" | "webhook" | null {
+  const ws = Array.isArray(sp.waitlist) ? sp.waitlist[0] : sp.waitlist;
+  if (ws === "success") {
+    return "success";
+  }
+  const e = Array.isArray(sp.waitlist_error) ? sp.waitlist_error[0] : sp.waitlist_error;
+  if (e === "email" || e === "privacy" || e === "store" || e === "webhook") {
+    return e;
+  }
+  return null;
+}
+
+export default async function LandingPage({
+  searchParams,
+}: {
+  searchParams: LandingSearchParams;
+}) {
+  const sp = await searchParams;
+  const urlFlash = waitlistUrlFlash(sp);
+
   return (
     <div
       className={`${terminalFont.className} relative flex min-h-dvh flex-col overflow-x-hidden bg-[#080602] text-[#ffcc66] antialiased`}
     >
+      <LandingJsonLd />
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_85%_75%_at_50%_45%,transparent_40%,rgba(0,0,0,0.55)_100%),radial-gradient(ellipse_100%_60%_at_50%_50%,rgba(255,190,90,0.06),transparent_55%)]" />
       <div className="scanlines pointer-events-none absolute inset-0 opacity-20" />
 
@@ -83,22 +94,7 @@ export default function LandingPage() {
             >
               GENTA
             </Link>
-            <nav className="flex flex-wrap items-center justify-end gap-2 sm:gap-3">
-              <Link
-                href={LEGAL_ROUTES.contact}
-                aria-label="Contact"
-                className="inline-flex h-10 w-10 shrink-0 items-center justify-center text-[#ffcc66] [text-shadow:0_0_8px_rgba(255,204,102,0.25)] transition hover:text-[#ffe08a] hover:[text-shadow:0_0_14px_rgba(255,204,102,0.4)] sm:h-11 sm:w-11"
-              >
-                <ContactMailHeaderIcon className="h-5 w-5" />
-              </Link>
-              <Link
-                href={CHAT_ROUTE}
-                aria-label={WAITLIST_OVERLAY.landingChatCtaLabel}
-                className="inline-flex h-10 w-10 shrink-0 items-center justify-center text-[#ffcc66] [text-shadow:0_0_8px_rgba(255,204,102,0.25)] transition hover:text-[#ffe08a] hover:[text-shadow:0_0_14px_rgba(255,204,102,0.4)] sm:h-11 sm:w-11"
-              >
-                <TerminalChatHeaderIcon className="h-5 w-5" />
-              </Link>
-            </nav>
+            <LandingHeaderNav />
           </div>
         </header>
 
@@ -120,7 +116,7 @@ export default function LandingPage() {
                 id="waitlist"
                 className="mx-auto mt-8 w-full max-w-xl scroll-mt-24"
               >
-                <LandingWaitlistForm variant="hero" />
+                <LandingWaitlistForm variant="hero" urlFlash={urlFlash} />
               </div>
             </div>
           </section>
@@ -130,14 +126,21 @@ export default function LandingPage() {
               <h2 className="mb-10 text-center text-xl tracking-[0.1em] text-[#ffcc66] [text-shadow:0_0_12px_rgba(255,204,102,0.3)] sm:mb-12 sm:text-2xl">
                 {WAITLIST_OVERLAY.featuresSectionTitle}
               </h2>
-              <ul className="grid gap-4 sm:grid-cols-2">
-                {WAITLIST_OVERLAY.benefits.map((line) => (
+              <ul className="mx-auto flex max-w-2xl flex-col gap-5 sm:gap-6">
+                {WAITLIST_OVERLAY.benefits.map((item) => (
                   <li
-                    key={line}
-                    className="flex gap-3 border border-[#4a6b58] bg-[#0c0a06]/90 p-5 text-left text-[0.88rem] leading-relaxed text-[#c9a85e]"
+                    key={item.headline}
+                    className="flex gap-4 border border-[#4a6b58]/90 bg-[#0c0a06]/95 px-5 py-5 text-left sm:gap-5 sm:px-7 sm:py-6"
                   >
-                    <CheckIcon />
-                    <span>{line}</span>
+                    <CheckIcon className="mt-1.5 h-6 w-6 shrink-0 text-[#7aab8a] sm:h-7 sm:w-7" />
+                    <div className="min-w-0 flex-1 space-y-2">
+                      <p className="text-lg font-bold leading-snug tracking-[0.04em] text-[#ffcc66] [text-shadow:0_0_10px_rgba(255,204,102,0.2)] sm:text-xl md:text-2xl">
+                        {item.headline}
+                      </p>
+                      <p className="text-[0.95rem] leading-relaxed text-[#e8c266]/90 sm:text-base md:text-lg">
+                        {item.supporting}
+                      </p>
+                    </div>
                   </li>
                 ))}
               </ul>
