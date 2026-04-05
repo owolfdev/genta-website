@@ -162,10 +162,10 @@ export default function LandingPage() {
               <h2 className="text-xl tracking-[0.1em] text-[#ffcc66] [text-shadow:0_0_12px_rgba(255,204,102,0.3)] sm:text-2xl">
                 GET UPDATES
               </h2>
-              <p className="mt-3 text-[0.85rem] leading-relaxed text-[#b8892e]/95 sm:text-[0.9rem]">
+              {/* <p className="mt-3 text-[0.85rem] leading-relaxed text-[#b8892e]/95 sm:text-[0.9rem]">
                 We’ll email you when Genta is ready. No spam — same policy as on
                 the terminal experience.
-              </p>
+              </p> */}
               <LandingWaitlistForm />
             </div>
           </section>

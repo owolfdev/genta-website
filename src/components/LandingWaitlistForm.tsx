@@ -45,13 +45,13 @@ export function LandingWaitlistForm() {
 
   return (
     <form
-      className="mt-6 space-y-4 border-t border-[#4a6b58]/50 pt-6"
+      className="mt-5 space-y-4"
       onSubmit={(e) => void onSubmit(e)}
       noValidate
     >
       <div>
         <label
-          className="mb-2 block text-[0.75rem] leading-relaxed text-[#b8892e]/95 sm:text-[0.8rem]"
+          className="mb-2 block text-[0.875rem] leading-relaxed text-[#d4a85e] sm:text-[0.95rem]"
           htmlFor="landing-waitlist-email"
         >
           {WAITLIST_OVERLAY.emailLabel}
@@ -73,12 +73,12 @@ export function LandingWaitlistForm() {
               }
             }}
             disabled={status === "submitting" || status === "success"}
-            className="min-w-0 flex-1 border border-[#4a6b58] bg-[#0c0a06] px-3 py-2.5 text-[0.95rem] text-[#ffcc66] outline-none ring-0 placeholder:text-[#b8892e]/45 focus:border-[#7aab8a] disabled:opacity-50"
+            className="min-h-11 min-w-0 flex-1 border border-[#4a6b58] bg-[#0c0a06] px-3 py-2.5 text-base leading-normal text-[#ffcc66] outline-none ring-0 placeholder:text-[#b8892e]/50 focus:border-[#7aab8a] disabled:opacity-50 sm:min-h-0"
           />
           <button
             type="submit"
             disabled={status === "submitting" || status === "success"}
-            className="shrink-0 border border-[#4a6b58] bg-[#0c0a06] px-4 py-2.5 text-[0.85rem] font-normal tracking-wide text-[#ffcc66] transition hover:border-[#7aab8a] focus-visible:border-[#7aab8a] focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-40 sm:self-stretch sm:px-5"
+            className="min-h-11 shrink-0 border border-[#4a6b58] bg-[#0c0a06] px-4 py-2.5 text-sm font-normal tracking-wide text-[#ffcc66] transition hover:border-[#7aab8a] focus-visible:border-[#7aab8a] focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-40 sm:min-h-0 sm:self-stretch sm:px-5 sm:text-[0.85rem]"
           >
             {status === "submitting" ? "Sending…" : WAITLIST_OVERLAY.submitLabel}
           </button>
