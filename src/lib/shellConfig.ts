@@ -33,6 +33,8 @@ export const WAITLIST_OVERLAY = {
   title: "Genta",
   tagline:
     "Local-first AI assistant for desktop and mobile. Your chat, tools, and memory stay on your device by default. Genta is coming soon. Join the waitlist to get news and updates.",
+  /** Landing page — heading above the benefit cards (middle section). */
+  featuresSectionTitle: "Why Genta",
   benefits: [
     "Private by default: run models locally; cloud optional.",
     // "Your files and notes in one place, with retrieval you can trace.",
@@ -57,6 +59,21 @@ export const WAITLIST_OVERLAY = {
   dismissAriaLabel: "Continue to chat with the Genta assistant",
   /** `sessionStorage` key; value {@link WAITLIST_GATE_SESSION_VALUE} means “don’t auto-open on load”. */
   sessionStorageKey: "genta-waitlist-overlay",
+} as const;
+
+/**
+ * Landing hero — “mothership” sequencer countdown (see `MothershipCountdown.tsx`).
+ *
+ * **`enabled`:** keep `false` until you are willing to stand behind `targetIso` publicly (missed
+ * deadlines read as vapor). Set to `true` to show the widget; copy and dates stay wired below.
+ */
+export const LAUNCH_COUNTDOWN = {
+  enabled: false,
+  /** ISO 8601 instant (UTC recommended), e.g. `2026-07-04T00:00:00.000Z`. */
+  targetIso: "2026-07-04T00:00:00.000Z",
+  statusLine: "SEQUENCE // PRIMARY BURN WINDOW",
+  subLine: "T-MINUS — NOMINAL",
+  completeLine: "SEQUENCE COMPLETE // STANDBY FOR HANDSHAKE",
 } as const;
 
 /**

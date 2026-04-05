@@ -44,6 +44,57 @@ body {
   }
 }
 
+/* Landing hero — primary CTA: clockwise bright wedge on border (conic-gradient + animated angle). */
+@property --cta-border-angle {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
+
+@keyframes landing-waitlist-border-spin {
+  to {
+    --cta-border-angle: 360deg;
+  }
+}
+
+/* Padding-ring wrapper: conic paints the “border” strip reliably (no border-box clip quirks). */
+.landing-waitlist-cta-ring {
+  --cta-border-angle: 0deg;
+  display: inline-flex;
+  padding: 1px;
+  box-sizing: border-box;
+  /* Same hue as border sage (#4a6b58); wedge is brighter greens (#7aab8a → light mint), not amber. */
+  background: conic-gradient(
+    from var(--cta-border-angle),
+    rgb(74, 107, 88) 0deg,
+    rgb(74, 107, 88) 288deg,
+    rgb(98, 138, 118) 302deg,
+    rgb(122, 171, 138) 314deg,
+    rgb(196, 232, 214) 326deg,
+    rgb(122, 171, 138) 336deg,
+    rgb(86, 120, 100) 348deg,
+    rgb(74, 107, 88) 360deg
+  );
+  animation: landing-waitlist-border-spin 4.5s linear infinite;
+}
+
+.landing-waitlist-cta-inner {
+  display: inline-flex;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  background: rgb(12, 10, 6);
+  color: rgb(255, 204, 102);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-waitlist-cta-ring {
+    animation: none;
+    padding: 1px;
+    background: rgb(74, 107, 88);
+  }
+}
+
 /*
  * Chat transcript scrollbar — sage thumb (#4a6b58 / #7aab8a).
  * Use explicit background-color (not `transparent`/`background:` shorthand): Tailwind’s

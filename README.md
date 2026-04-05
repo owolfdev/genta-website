@@ -35,6 +35,8 @@ This repo does **not** ship Supabase CLI migrations for now; schema is applied i
 
 Reference DDL (idempotent: `if not exists` / `add column if not exists`) is in [`supabase/waitlist_schema.sql`](supabase/waitlist_schema.sql) — table, privacy columns, indexes, RLS. Paste or run that file in the SQL Editor to create or align `genta_waitlist`.
 
+Contact messages from [`/contact`](http://localhost:3000/contact) go to **`genta_contact_messages`** via `POST /api/contact` (same Supabase service role). Run [`supabase/genta_contact_messages_schema.sql`](supabase/genta_contact_messages_schema.sql) to create **`genta_projects`** (seed row `slug = genta`) and **`genta_contact_messages`** with `project_id` FK, `read` / `responded`, and indexes aligned with your other contact tables. Optional env **`GENTA_CONTACT_PROJECT_ID`** overrides the default UUID if your database already uses a different project row.
+
 Optional: `WAITLIST_WEBHOOK_URL` still runs **after** a successful Supabase insert (Slack, Zapier, etc.); webhook failure is logged only so the user still sees success.
 
 ## Stack
