@@ -44,39 +44,73 @@ body {
   }
 }
 
-/* Landing hero — primary CTA: clockwise bright wedge on border (conic-gradient + animated angle). */
-@property --cta-border-angle {
-  syntax: "<angle>";
-  initial-value: 0deg;
-  inherits: false;
-}
-
-@keyframes landing-waitlist-border-spin {
-  to {
-    --cta-border-angle: 360deg;
+/* Landing hero — primary CTA: flat sage ring + subtle glow pulse (long rest → quick swell → soft decay). */
+@keyframes landing-waitlist-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 1px 0 rgba(122, 171, 138, 0.06), 0 0 0 0 rgba(196, 232, 214, 0);
+  }
+  58% {
+    box-shadow: 0 0 2px 0 rgba(122, 171, 138, 0.07), 0 0 0 0 rgba(196, 232, 214, 0);
+  }
+  68% {
+    box-shadow: 0 0 24px 4px rgba(122, 171, 138, 0.2),
+      0 0 14px 2px rgba(196, 232, 214, 0.1);
+  }
+  78% {
+    box-shadow: 0 0 12px 2px rgba(122, 171, 138, 0.09),
+      0 0 6px 1px rgba(196, 232, 214, 0.05);
+  }
+  92% {
+    box-shadow: 0 0 1px 0 rgba(122, 171, 138, 0.06), 0 0 0 0 rgba(196, 232, 214, 0);
   }
 }
 
-/* Padding-ring wrapper: conic paints the “border” strip reliably (no border-box clip quirks). */
+/* Padding-ring wrapper: 1px sage strip (same pattern as reduced-motion). */
 .landing-waitlist-cta-ring {
-  --cta-border-angle: 0deg;
   display: inline-flex;
   padding: 1px;
   box-sizing: border-box;
-  /* Same hue as border sage (#4a6b58); wedge is brighter greens (#7aab8a → light mint), not amber. */
-  background: conic-gradient(
-    from var(--cta-border-angle),
-    rgb(74, 107, 88) 0deg,
-    rgb(74, 107, 88) 288deg,
-    rgb(98, 138, 118) 302deg,
-    rgb(122, 171, 138) 314deg,
-    rgb(196, 232, 214) 326deg,
-    rgb(122, 171, 138) 336deg,
-    rgb(86, 120, 100) 348deg,
-    rgb(74, 107, 88) 360deg
-  );
-  animation: landing-waitlist-border-spin 4.5s linear infinite;
+  background: rgb(74, 107, 88);
+  animation: landing-waitlist-pulse 8s cubic-bezier(0.45, 0, 0.25, 1) infinite;
 }
+
+/*
+ * --- ROTATING HIGHLIGHT (archived) — restore by:
+ *   1. Remove @keyframes landing-waitlist-pulse and the pulse `animation` line above.
+ *   2. Uncomment the block below and delete the duplicate `.landing-waitlist-cta-ring` / pulse keyframes you no longer need.
+ *
+ * @property --cta-border-angle {
+ *   syntax: "<angle>";
+ *   initial-value: 0deg;
+ *   inherits: false;
+ * }
+ *
+ * @keyframes landing-waitlist-border-spin {
+ *   to {
+ *     --cta-border-angle: 360deg;
+ *   }
+ * }
+ *
+ * .landing-waitlist-cta-ring {
+ *   --cta-border-angle: 0deg;
+ *   display: inline-flex;
+ *   padding: 1px;
+ *   box-sizing: border-box;
+ *   background: conic-gradient(
+ *     from var(--cta-border-angle),
+ *     rgb(74, 107, 88) 0deg,
+ *     rgb(74, 107, 88) 288deg,
+ *     rgb(98, 138, 118) 302deg,
+ *     rgb(122, 171, 138) 314deg,
+ *     rgb(196, 232, 214) 326deg,
+ *     rgb(122, 171, 138) 336deg,
+ *     rgb(86, 120, 100) 348deg,
+ *     rgb(74, 107, 88) 360deg
+ *   );
+ *   animation: landing-waitlist-border-spin 4.5s linear infinite;
+ * }
+ */
 
 .landing-waitlist-cta-inner {
   display: inline-flex;
@@ -85,11 +119,17 @@ body {
   justify-content: center;
   background: rgb(12, 10, 6);
   color: rgb(255, 204, 102);
+  transition: background-color 0.2s ease;
+}
+
+.landing-waitlist-cta-inner:hover {
+  background: rgb(18, 28, 22);
 }
 
 @media (prefers-reduced-motion: reduce) {
   .landing-waitlist-cta-ring {
     animation: none;
+    box-shadow: none;
     padding: 1px;
     background: rgb(74, 107, 88);
   }

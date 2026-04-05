@@ -119,7 +119,7 @@ export default function LandingPage() {
                 <span className="landing-waitlist-cta-ring inline-flex w-full sm:w-auto">
                   <a
                     href="#waitlist"
-                    className="landing-waitlist-cta-inner px-8 py-3.5 text-xs font-normal uppercase tracking-[0.2em] transition hover:brightness-110"
+                    className="landing-waitlist-cta-inner px-8 py-3.5 text-xs font-normal uppercase tracking-[0.2em]"
                   >
                     Join the waitlist
                   </a>
