@@ -87,7 +87,7 @@ export default function LandingPage() {
           <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-6 py-4 sm:px-10">
             <Link
               href="/"
-              className="text-sm tracking-[0.25em] text-[#ffcc66] [text-shadow:0_0_10px_rgba(255,204,102,0.35)]"
+              className="text-base tracking-[0.25em] text-[#ffcc66] [text-shadow:0_0_10px_rgba(255,204,102,0.35)] transition hover:text-[#ffe08a] hover:[text-shadow:0_0_14px_rgba(255,204,102,0.4)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#b8892e]/50 focus-visible:ring-offset-2 focus-visible:ring-offset-[#080602]"
             >
               GENTA
             </Link>
@@ -125,12 +125,6 @@ export default function LandingPage() {
               {/* Mothership T-minus: set `LAUNCH_COUNTDOWN.enabled` to true in `shellConfig` when the timeline is public-ready. */}
               {LAUNCH_COUNTDOWN.enabled ? <MothershipCountdown /> : null}
               <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row sm:gap-5">
-                <Link
-                  href={CHAT_ROUTE}
-                  className="inline-flex w-full items-center justify-center border border-[#b8892e] bg-[#b8892e]/10 px-8 py-3.5 text-xs font-normal uppercase tracking-[0.2em] text-[#ffcc66] transition hover:bg-[#b8892e]/20 sm:w-auto"
-                >
-                  {WAITLIST_OVERLAY.landingChatCtaLabel}
-                </Link>
                 <span className="landing-waitlist-cta-ring inline-flex w-full sm:w-auto">
                   <a
                     href="#waitlist"
@@ -139,6 +133,12 @@ export default function LandingPage() {
                     Join the waitlist
                   </a>
                 </span>
+                <Link
+                  href={CHAT_ROUTE}
+                  className="inline-flex w-full items-center justify-center border border-[#b8892e] bg-[#b8892e]/10 px-8 py-3.5 text-xs font-normal uppercase tracking-[0.2em] text-[#ffcc66] transition hover:bg-[#b8892e]/20 sm:w-auto"
+                >
+                  {WAITLIST_OVERLAY.landingChatCtaLabel}
+                </Link>
               </div>
             </div>
           </section>

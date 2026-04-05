@@ -642,14 +642,16 @@ export default function ChatClient() {
         inert={waitlistOpen ? true : undefined}
         className="relative z-10 mx-auto box-border flex h-full min-h-0 w-full max-w-5xl flex-col px-6 pb-6 pt-6 sm:px-10 sm:pb-8 sm:pt-10"
       >
-        <header
-          className="mb-5 shrink-0 flex items-center justify-between gap-3 border-b border-[#b8892e] pb-3 text-xs tracking-[0.25em] text-[#b8892e] sm:text-sm"
-          aria-label={SHELL_UI.headerTitle}
-        >
-          <span className="text-base tracking-[0.25em] sm:hidden">
-            {SHELL_UI.headerTitleShort}
-          </span>
-          <span className="hidden sm:inline">{SHELL_UI.headerTitle}</span>
+        <header className="mb-5 shrink-0 flex items-center justify-between gap-3 border-b border-[#b8892e] pb-3 text-xs tracking-[0.25em] text-[#b8892e] sm:text-sm">
+          <Link
+            href="/"
+            className="min-w-0 shrink text-[#ffcc66] [text-shadow:0_0_10px_rgba(255,204,102,0.35)] transition hover:text-[#ffe08a] hover:[text-shadow:0_0_14px_rgba(255,204,102,0.4)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#b8892e]/50 focus-visible:ring-offset-2 focus-visible:ring-offset-[#080602]"
+          >
+            <span className="text-base tracking-[0.25em] sm:hidden">
+              {SHELL_UI.headerTitleShort}
+            </span>
+            <span className="hidden sm:inline">{SHELL_UI.headerTitle}</span>
+          </Link>
           <div className="flex shrink-0 items-center gap-3 sm:gap-4">
             {!waitlistOpen ? (
               <>
