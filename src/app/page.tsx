@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Share_Tech_Mono } from "next/font/google";
 import { LandingWaitlistForm } from "@/components/LandingWaitlistForm";
+import { WaitlistTaglineInline } from "@/components/WaitlistTaglineInline";
 import { MothershipCountdown } from "@/components/MothershipCountdown";
 import { CHAT_ROUTE } from "@/lib/routes";
 import { LEGAL_ROUTES } from "@/lib/legalRoutes";
@@ -111,7 +112,7 @@ export default function LandingPage() {
                 {WAITLIST_OVERLAY.title}
               </h1>
               <p className="mx-auto mt-6 max-w-2xl text-[0.95rem] leading-relaxed text-[#e8c266]/95 sm:text-lg [text-shadow:0_0_8px_rgba(255,204,102,0.25)]">
-                {WAITLIST_OVERLAY.tagline}
+                <WaitlistTaglineInline />
               </p>
               {/* Mothership T-minus: set `LAUNCH_COUNTDOWN.enabled` to true in `shellConfig` when the timeline is public-ready. */}
               {LAUNCH_COUNTDOWN.enabled ? <MothershipCountdown /> : null}

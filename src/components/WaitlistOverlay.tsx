@@ -3,6 +3,7 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { LEGAL_ROUTES } from "@/lib/legalRoutes";
+import { WaitlistTaglineInline } from "@/components/WaitlistTaglineInline";
 import { WAITLIST_OVERLAY } from "@/lib/shellConfig";
 
 /**
@@ -149,7 +150,7 @@ export function WaitlistOverlay({ className, open, onDismiss }: Props) {
             {WAITLIST_OVERLAY.title}
           </h2>
           <p className="mt-3 text-[0.95rem] leading-relaxed text-[#e8c266]/95">
-            {WAITLIST_OVERLAY.tagline}
+            <WaitlistTaglineInline />
           </p>
           <ul className="mt-4 list-none space-y-2 border-l-2 border-[#4a6b58] pl-3 text-[0.88rem] leading-snug text-[#c9a85e]">
             {WAITLIST_OVERLAY.benefits.map((line) => (

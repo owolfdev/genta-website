@@ -24,6 +24,11 @@ export const SHELL_UI = {
  */
 export const WAITLIST_GATE_SESSION_VALUE = "dismissed" as const;
 
+/** Lead + tail compose {@link WAITLIST_OVERLAY.tagline}; the word between them is linked in hero / overlay UI. */
+const WAITLIST_TAGLINE_LEAD =
+  "Local-first AI assistant for desktop and mobile. Your chat, tools, and memory stay on your device by default. Genta is coming soon. Join the ";
+const WAITLIST_TAGLINE_AFTER_WAITLIST_WORD = " to get news and updates.";
+
 /** Marketing overlay (waitlist gate) — short copy, not full docs. */
 export const WAITLIST_OVERLAY = {
   /** Waitlist backdrop tint — applied as inline `backgroundColor` on the scrim div (see WaitlistOverlay). */
@@ -32,7 +37,9 @@ export const WAITLIST_OVERLAY = {
   headerReopenLabel: "Waitlist",
   title: "Genta",
   tagline:
-    "Local-first AI assistant for desktop and mobile. Your chat, tools, and memory stay on your device by default. Genta is coming soon. Join the waitlist to get news and updates.",
+    `${WAITLIST_TAGLINE_LEAD}waitlist${WAITLIST_TAGLINE_AFTER_WAITLIST_WORD}`,
+  taglineLead: WAITLIST_TAGLINE_LEAD,
+  taglineAfterWaitlistWord: WAITLIST_TAGLINE_AFTER_WAITLIST_WORD,
   /** Landing page — heading above the benefit cards (middle section). */
   featuresSectionTitle: "Why Genta",
   benefits: [
