@@ -116,21 +116,11 @@ export default function LandingPage() {
               </p>
               {/* Mothership T-minus: set `LAUNCH_COUNTDOWN.enabled` to true in `shellConfig` when the timeline is public-ready. */}
               {LAUNCH_COUNTDOWN.enabled ? <MothershipCountdown /> : null}
-              <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row sm:gap-5">
-                <span className="landing-waitlist-cta-ring inline-flex w-full sm:w-auto">
-                  <a
-                    href="#waitlist"
-                    className="landing-waitlist-cta-inner px-8 py-3.5 text-xs font-normal uppercase tracking-[0.2em]"
-                  >
-                    Join the waitlist
-                  </a>
-                </span>
-                <Link
-                  href={CHAT_ROUTE}
-                  className="inline-flex w-full items-center justify-center border border-[#b8892e] bg-[#b8892e]/10 px-8 py-3.5 text-xs font-normal uppercase tracking-[0.2em] text-[#ffcc66] transition hover:bg-[#b8892e]/20 sm:w-auto"
-                >
-                  {WAITLIST_OVERLAY.landingChatCtaLabel}
-                </Link>
+              <div
+                id="waitlist"
+                className="mx-auto mt-8 w-full max-w-xl scroll-mt-24"
+              >
+                <LandingWaitlistForm variant="hero" />
               </div>
             </div>
           </section>
@@ -154,19 +144,20 @@ export default function LandingPage() {
             </div>
           </section>
 
-          <section
-            id="waitlist"
-            className="border-t border-[#4a6b58]/60 px-6 py-14 sm:px-10 sm:py-20"
-          >
-            <div className="mx-auto max-w-xl">
+          <section className="border-t border-[#4a6b58]/60 bg-[#080602]/80 px-6 py-14 sm:px-10 sm:py-20">
+            <div className="mx-auto max-w-2xl text-center">
               <h2 className="text-xl tracking-[0.1em] text-[#ffcc66] [text-shadow:0_0_12px_rgba(255,204,102,0.3)] sm:text-2xl">
-                GET UPDATES
+                {WAITLIST_OVERLAY.landingChatSectionTitle}
               </h2>
-              {/* <p className="mt-3 text-[0.85rem] leading-relaxed text-[#b8892e]/95 sm:text-[0.9rem]">
-                We’ll email you when Genta is ready. No spam — same policy as on
-                the terminal experience.
-              </p> */}
-              <LandingWaitlistForm />
+              <p className="mx-auto mt-4 max-w-lg text-[0.9rem] leading-relaxed text-[#c9a85e] sm:text-[0.95rem]">
+                {WAITLIST_OVERLAY.landingChatSectionBlurb}
+              </p>
+              <Link
+                href={CHAT_ROUTE}
+                className="mt-8 inline-flex w-full items-center justify-center border border-[#b8892e] bg-[#b8892e]/10 px-8 py-3.5 text-xs font-normal uppercase tracking-[0.2em] text-[#ffcc66] transition hover:bg-[#b8892e]/20 sm:w-auto"
+              >
+                {WAITLIST_OVERLAY.landingChatCtaLabel}
+              </Link>
             </div>
           </section>
         </main>

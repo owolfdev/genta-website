@@ -52,9 +52,15 @@ export const WAITLIST_OVERLAY = {
   /** `<label htmlFor="waitlist-email">` — no link; privacy line sits below the input row. */
   emailLabel:
     "Enter your email address — we’ll contact you when Genta is ready.",
+  /** Landing hero waitlist form — shorter label than {@link emailLabel}. */
+  landingFormEmailLabel: "We’ll email you when Genta is ready.",
   /** Below email + Join; before `privacyPolicyLinkText` (new tab). */
   waitlistPrivacyBelowInputBeforeLink:
     "We only use your email for Genta news. We don’t sell it or share it with anyone for advertising. Joining waitlist or chat means you agree to our ",
+  /** Landing hero — compact privacy line (link text still {@link privacyPolicyLinkText}). */
+  landingFormPrivacyBeforeLink:
+    "Genta news only — not sold or shared for ads. ",
+  landingFormPrivacyAfterLink: ".",
   privacyPolicyLinkText: "Privacy Policy",
   waitlistPrivacyBelowInputAfterLink: ".",
   emailPlaceholder: "you@domain.com",
@@ -62,6 +68,10 @@ export const WAITLIST_OVERLAY = {
   dismissLabel: "Chat With Genta Assistant",
   /** Primary CTA on the marketing landing page (see `CHAT_ROUTE` in `lib/routes.ts`). */
   landingChatCtaLabel: "Open terminal chat",
+  /** Mid-page section heading — browser-based assistant demo. */
+  landingChatSectionTitle: "Chat with Genta",
+  landingChatSectionBlurb:
+    "Try the assistant in your browser — terminal-style chat, same local-first stance.",
   /** `aria-label` for the dismiss button (visible label is long). */
   dismissAriaLabel: "Continue to chat with the Genta assistant",
   /** `sessionStorage` key; value {@link WAITLIST_GATE_SESSION_VALUE} means “don’t auto-open on load”. */

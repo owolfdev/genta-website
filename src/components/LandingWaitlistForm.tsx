@@ -5,7 +5,12 @@ import { useState } from "react";
 import { LEGAL_ROUTES } from "@/lib/legalRoutes";
 import { WAITLIST_OVERLAY } from "@/lib/shellConfig";
 
-export function LandingWaitlistForm() {
+type Props = {
+  /** Hero: compact copy; default: same strings as the in-chat waitlist overlay. */
+  variant?: "hero" | "default";
+};
+
+export function LandingWaitlistForm({ variant = "default" }: Props) {
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<
     "idle" | "submitting" | "success" | "error"
@@ -43,22 +48,39 @@ export function LandingWaitlistForm() {
     }
   };
 
+  const emailLabel =
+    variant === "hero"
+      ? WAITLIST_OVERLAY.landingFormEmailLabel
+      : WAITLIST_OVERLAY.emailLabel;
+  const privacyBefore =
+    variant === "hero"
+      ? WAITLIST_OVERLAY.landingFormPrivacyBeforeLink
+      : WAITLIST_OVERLAY.waitlistPrivacyBelowInputBeforeLink;
+  const privacyAfter =
+    variant === "hero"
+      ? WAITLIST_OVERLAY.landingFormPrivacyAfterLink
+      : WAITLIST_OVERLAY.waitlistPrivacyBelowInputAfterLink;
+  const inputId =
+    variant === "hero" ? "landing-waitlist-email-hero" : "landing-waitlist-email";
+
   return (
     <form
-      className="mt-5 space-y-4"
+      className={
+        variant === "hero" ? "mt-8 space-y-3 text-left" : "mt-5 space-y-4 text-left"
+      }
       onSubmit={(e) => void onSubmit(e)}
       noValidate
     >
       <div>
         <label
           className="mb-2 block text-[0.875rem] leading-relaxed text-[#d4a85e] sm:text-[0.95rem]"
-          htmlFor="landing-waitlist-email"
+          htmlFor={inputId}
         >
-          {WAITLIST_OVERLAY.emailLabel}
+          {emailLabel}
         </label>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-stretch">
           <input
-            id="landing-waitlist-email"
+            id={inputId}
             type="email"
             name="email"
             autoComplete="email"
@@ -86,14 +108,14 @@ export function LandingWaitlistForm() {
       </div>
 
       <p className="text-[0.75rem] leading-relaxed text-[#b8892e]/95 sm:text-[0.8rem]">
-        {WAITLIST_OVERLAY.waitlistPrivacyBelowInputBeforeLink}
+        {privacyBefore}
         <Link
           href={LEGAL_ROUTES.privacyPolicy}
           className="text-[#7aab8a] underline decoration-[#4a6b58] underline-offset-2 transition hover:text-[#9fcbad]"
         >
           {WAITLIST_OVERLAY.privacyPolicyLinkText}
         </Link>
-        {WAITLIST_OVERLAY.waitlistPrivacyBelowInputAfterLink}
+        {privacyAfter}
       </p>
 
       {errorMessage ? (
