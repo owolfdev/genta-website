@@ -71,7 +71,7 @@ export const WAITLIST_OVERLAY = {
   /** Mid-page section heading — browser-based assistant demo. */
   landingChatSectionTitle: "Chat with Genta",
   landingChatSectionBlurb:
-    "Try the assistant in your browser — terminal-style chat, same local-first stance.",
+    "Learn more about Genta by chatting with its AI assistant in your browser.",
   /** `aria-label` for the dismiss button (visible label is long). */
   dismissAriaLabel: "Continue to chat with the Genta assistant",
   /** `sessionStorage` key; value {@link WAITLIST_GATE_SESSION_VALUE} means “don’t auto-open on load”. */
