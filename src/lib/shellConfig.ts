@@ -32,7 +32,7 @@ export const WAITLIST_OVERLAY = {
   headerReopenLabel: "Waitlist",
   title: "Genta",
   tagline:
-    "Local-first AI assistant for desktop and mobile. Your chat, tools, and memory stay on your device by default—not on someone else’s server.",
+    "Local-first AI assistant for desktop and mobile. Your chat, tools, and memory stay on your device by default. Genta is coming soon. Join the waitlist to get news and updates.",
   benefits: [
     "Private by default: run models locally; cloud optional.",
     // "Your files and notes in one place, with retrieval you can trace.",
@@ -41,7 +41,8 @@ export const WAITLIST_OVERLAY = {
     "Genta is coming soon. Join the waitlist to get news and updates.",
   ],
   /** `<label htmlFor="waitlist-email">` — no link; privacy line sits below the input row. */
-  emailLabel: "Enter your email address — we’ll contact you when Genta is ready.",
+  emailLabel:
+    "Enter your email address — we’ll contact you when Genta is ready.",
   /** Below email + Join; before `privacyPolicyLinkText` (new tab). */
   waitlistPrivacyBelowInputBeforeLink:
     "We only use your email for Genta news. We don’t sell it or share it with anyone for advertising. Joining waitlist or chat means you agree to our ",
