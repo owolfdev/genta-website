@@ -1,4 +1,8 @@
-import { stripIncompletePauseInRaw, stripPauseDirectivesFromText } from "./botDirectives";
+import {
+  stripClearDirectivesFromText,
+  stripIncompletePauseInRaw,
+  stripPauseDirectivesFromText,
+} from "./botDirectives";
 
 /**
  * Inline styled segments inside an assistant stream (markers stripped for display).
@@ -10,8 +14,12 @@ import { stripIncompletePauseInRaw, stripPauseDirectivesFromText } from "./botDi
  *
  * Inline (inside bot text segments):
  * - `@pause[ms]` — non-displayed pause during reveal (`ms` = milliseconds, clamped). Example: `@pause[1000]` ≈ one second.
+ *   On its own line between paragraphs, the token is removed but the surrounding newlines stay, so you get a **blank line**
+ *   between blocks (`text` / `@pause` / `text` → `text`, empty line, `text`). Inline pauses (`… @pause[500] …`) keep layout as written.
+ * - `@clear` — during reveal, clears the visible transcript so following text types on a blank screen; stripped from API history.
  *
- * After `@end`, start further content on a new line. The UI inserts `\n` between segments.
+ * After `@end`, start further content on a new line. The UI inserts `\n` between segments. Blank lines in
+ * the source (e.g. between `@end` and the next paragraph) are kept in bot segments via line-wise join.
  *
  * Markers stay in stored `role: "bot"` text for re-parse; use `stripBotProtocolForHistory()` for APIs.
  */
@@ -55,16 +63,22 @@ export function stripIncompleteBotProtocol(raw: string): string {
 export function parseBotProtocolToSegments(raw: string): BotStreamSegment[] {
   const lines = raw.split("\n");
   const out: BotStreamSegment[] = [];
-  let botBuf = "";
+  /** Joined with `\n` so empty strings preserve blank lines (split drops nothing; old `+=` skipped `""`). */
+  let botLines: string[] = [];
   let systemBuf = "";
   let asciiBuf = "";
   let mode: "bot" | "block_system" | "block_ascii" = "bot";
 
   const flushBot = () => {
-    if (botBuf.length > 0) {
-      out.push({ kind: "bot", text: botBuf });
-      botBuf = "";
+    if (botLines.length === 0) {
+      return;
     }
+    const text = botLines.join("\n");
+    botLines = [];
+    if (text.length === 0) {
+      return;
+    }
+    out.push({ kind: "bot", text });
   };
   const flushSystem = () => {
     if (systemBuf.length > 0) {
@@ -97,7 +111,7 @@ export function parseBotProtocolToSegments(raw: string): BotStreamSegment[] {
         out.push({ kind: "system", text: l.slice(LINE_PREFIX_SYSTEM.length) });
         continue;
       }
-      botBuf += (botBuf ? "\n" : "") + l;
+      botLines.push(l);
     } else if (mode === "block_system") {
       if (l === BLOCK_CLOSE) {
         flushSystem();
@@ -137,7 +151,7 @@ export function activeStreamSoundKind(raw: string): StreamSoundKind {
 /** Flatten to plain text for chat history / APIs (no protocol lines). */
 export function stripBotProtocolForHistory(raw: string): string {
   return parseBotProtocolToSegments(raw)
-    .map((s) => stripPauseDirectivesFromText(s.text))
+    .map((s) => stripClearDirectivesFromText(stripPauseDirectivesFromText(s.text)))
     .join("\n")
     .trimEnd();
 }

@@ -1,22 +1,23 @@
 "use client";
 
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Share_Tech_Mono } from "next/font/google";
-import {
-  parseBotProtocolToSegments,
-  stripBotProtocolForHistory,
-  stripIncompleteBotProtocol,
-} from "@/lib/botProtocol";
-import { parseInlineBotDirectives, type BotInlineChunk } from "@/lib/botDirectives";
+import { stripBotProtocolForHistory } from "@/lib/botProtocol";
 import { conversationIdFromChatiqJson, welcomeTextFromChatiqJson } from "@/lib/chatiqWelcomeResponse";
+import {
+  clearChatiqSession,
+  readChatiqSession,
+  writeChatiqSession,
+  type PersistedChatTurn,
+} from "@/lib/chatiqSessionStorage";
 import { consumeChatiqSseStream } from "@/lib/chatiqStream";
 import { revealBufferedBotText } from "@/lib/revealBotBuffer";
+import { BotMessageBody } from "@/components/BotMessageBody";
 import { WaitlistGateScrim, WaitlistOverlay } from "@/components/WaitlistOverlay";
 import { LEGAL_ROUTES } from "@/lib/legalRoutes";
 import {
   ASSISTANT_WELCOME_FALLBACK_TEXT,
-  BOT_INLINE_DIRECTIVES,
   SHELL_UI,
   WAITLIST_GATE_SESSION_VALUE,
   WAITLIST_OVERLAY,
@@ -36,8 +37,6 @@ const terminalFont = Share_Tech_Mono({
 });
 
 const USER_PREFIX = "> ";
-const SYSTEM_PREFIX = "# ";
-
 function AudioFeedbackIcon({ muted }: { muted: boolean }) {
   return muted ? (
     <svg
@@ -87,79 +86,7 @@ function buildChatiqHistory(messages: ChatMessage[]): { role: string; content: s
     }));
 }
 
-function InlineBotChunk({
-  chunk,
-  onDirective,
-}: {
-  chunk: BotInlineChunk;
-  onDirective?: (name: string) => void;
-}) {
-  if (chunk.kind === "text") {
-    return <Fragment>{chunk.text}</Fragment>;
-  }
-  if (chunk.kind === "pause") {
-    return null;
-  }
-  const known = BOT_INLINE_DIRECTIVES[chunk.name as keyof typeof BOT_INLINE_DIRECTIVES];
-  if (!known || !onDirective) {
-    return <Fragment>{chunk.raw}</Fragment>;
-  }
-  return (
-    <button
-      type="button"
-      onClick={() => onDirective(chunk.name)}
-      aria-label={known.ariaLabel}
-      className="mx-1 inline-block cursor-pointer rounded border border-[#4a6b58] px-2 py-0.5 text-[0.85em] tracking-[0.08em] text-[#7aab8a] underline decoration-[#4a6b58] underline-offset-2 transition hover:text-[#9fcbad]"
-    >
-      {known.label}
-    </button>
-  );
-}
-
-function BotMessageBody({
-  raw,
-  streaming,
-  onDirective,
-}: {
-  raw: string;
-  streaming?: boolean;
-  onDirective?: (name: string) => void;
-}) {
-  const source = streaming ? stripIncompleteBotProtocol(raw) : raw;
-  const segs = parseBotProtocolToSegments(source);
-  if (segs.length === 0) {
-    return null;
-  }
-  return (
-    <>
-      {segs.map((seg, i) => (
-        <Fragment key={i}>
-          {seg.kind === "system" ? (
-            <span className="text-[#4a6b58]">
-              {SYSTEM_PREFIX}
-              <span className="text-[#7aab8a] [text-shadow:0_0_8px_rgba(122,171,138,0.42)]">{seg.text}</span>
-            </span>
-          ) : seg.kind === "ascii" ? (
-            <pre className="my-1 max-w-full overflow-x-auto font-[inherit] text-[0.92em] leading-tight text-[#7dd3c0] whitespace-pre [text-shadow:0_0_6px_rgba(125,211,192,0.38)]">
-              {seg.text}
-            </pre>
-          ) : (
-            <span className="text-[#b8892e]">
-              {parseInlineBotDirectives(seg.text).map((chunk, chunkIdx) => (
-                <InlineBotChunk
-                  key={`${i}-${chunkIdx}`}
-                  chunk={chunk}
-                  onDirective={onDirective}
-                />
-              ))}
-            </span>
-          )}
-          {i < segs.length - 1 ? "\n" : null}
-        </Fragment>
-      ))}
-    </>
-  );
-}
+const SYSTEM_PREFIX = "# ";
 
 export default function ChatClient() {
   /** Waitlist opens only from the header or inline bot control — not on first paint (landing covers onboarding). */
@@ -169,11 +96,25 @@ export default function ChatClient() {
   const conversationIdRef = useRef<string | null>(null);
   /** Boot welcome row removed from the log on the user’s first message (thread continues via `conversation_id`). */
   const welcomeMessageIdRef = useRef<string | null>(null);
-  /** Set only after a non-empty welcome is committed — avoids Strict Mode double-effect skipping welcome; still enforces one welcome per mount. */
+  /** Set after welcome is committed, or true on load when `localStorage` had a saved thread (skip welcome). */
   const welcomeFinishedRef = useRef(false);
+  /** Bumped on welcome effect cleanup so aborted/late async work from a previous run cannot clobber UI or `assistantAbortRef`. */
+  const welcomeRunGenRef = useRef(0);
   const botBufferRef = useRef("");
   const streamDoneRef = useRef(false);
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>(() => {
+    const session = readChatiqSession();
+    if (!session || session.messages.length === 0) {
+      return [];
+    }
+    conversationIdRef.current = session.conversationId;
+    welcomeFinishedRef.current = true;
+    return session.messages.map((m) => ({
+      id: crypto.randomUUID(),
+      role: m.role as ChatRole,
+      text: m.text,
+    }));
+  });
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [draftBotText, setDraftBotText] = useState("");
@@ -251,6 +192,19 @@ export default function ChatClient() {
     }
     el.scrollTop = el.scrollHeight;
   }, [messages, draftBotText, draftUserText]);
+
+  /** Persist ChatIQ `conversation_id` + transcript for `/chat` revisits (see `lib/chatiqSessionStorage.ts`). */
+  useEffect(() => {
+    const cid = conversationIdRef.current;
+    const turns: PersistedChatTurn[] = messages
+      .filter((m): m is ChatMessage & { role: "user" | "bot" } => m.role === "user" || m.role === "bot")
+      .map((m) => ({ role: m.role, text: m.text }));
+    if (turns.length === 0 && !cid) {
+      clearChatiqSession();
+      return;
+    }
+    writeChatiqSession({ conversationId: cid, messages: turns });
+  }, [messages]);
 
   useEffect(() => {
     inputRef.current?.focus({ preventScroll: true });
@@ -394,7 +348,8 @@ export default function ChatClient() {
     if (waitlistOpen || welcomeFinishedRef.current) {
       return;
     }
-    let cancelled = false;
+    const myGen = (welcomeRunGenRef.current += 1);
+    const stale = () => myGen !== welcomeRunGenRef.current;
 
     const runWelcome = async () => {
       const w = welcomeFlowRef.current;
@@ -404,19 +359,24 @@ export default function ChatClient() {
       setIsTyping(true);
       setDraftBotText("");
       await w.startBotThinkingSound();
+      if (stale()) {
+        return;
+      }
 
       let responseText = "";
       let revealedForMessage = "";
 
       const finishWelcome = (messageText: string) => {
-        if (welcomeFinishedRef.current) {
+        if (welcomeFinishedRef.current || stale()) {
           return;
         }
         welcomeFlowRef.current.stopTyping();
         welcomeFlowRef.current.stopBotThinkingSound();
         setDraftBotText("");
         setIsTyping(false);
-        assistantAbortRef.current = null;
+        if (assistantAbortRef.current === ac) {
+          assistantAbortRef.current = null;
+        }
         if (!messageText.trim()) {
           return;
         }
@@ -438,12 +398,11 @@ export default function ChatClient() {
           signal: ac.signal,
         });
 
-        if (cancelled || ac.signal.aborted) {
-          w.stopTyping();
-          w.stopBotThinkingSound();
-          setDraftBotText("");
-          setIsTyping(false);
-          assistantAbortRef.current = null;
+        if (stale()) {
+          return;
+        }
+
+        if (ac.signal.aborted) {
           return;
         }
 
@@ -477,7 +436,7 @@ export default function ChatClient() {
               responseText = ASSISTANT_WELCOME_FALLBACK_TEXT;
             } else {
               const cid = conversationIdFromChatiqJson(data);
-              if (cid) {
+              if (cid && !stale()) {
                 conversationIdRef.current = cid;
               }
               responseText = welcomeTextFromChatiqJson(data);
@@ -488,12 +447,7 @@ export default function ChatClient() {
                 responseText,
                 ac.signal,
               );
-              if (cancelled) {
-                w.stopTyping();
-                w.stopBotThinkingSound();
-                setDraftBotText("");
-                setIsTyping(false);
-                assistantAbortRef.current = null;
+              if (stale()) {
                 return;
               }
               if (ac.signal.aborted) {
@@ -504,12 +458,7 @@ export default function ChatClient() {
           }
         }
       } catch (e) {
-        if (cancelled) {
-          welcomeFlowRef.current.stopTyping();
-          welcomeFlowRef.current.stopBotThinkingSound();
-          setDraftBotText("");
-          setIsTyping(false);
-          assistantAbortRef.current = null;
+        if (stale()) {
           return;
         }
         if (e instanceof DOMException && e.name === "AbortError") {
@@ -517,7 +466,9 @@ export default function ChatClient() {
           welcomeFlowRef.current.stopBotThinkingSound();
           setDraftBotText("");
           setIsTyping(false);
-          assistantAbortRef.current = null;
+          if (assistantAbortRef.current === ac) {
+            assistantAbortRef.current = null;
+          }
           return;
         }
         welcomeFlowRef.current.stopBotThinkingSound();
@@ -526,12 +477,22 @@ export default function ChatClient() {
         responseText = ASSISTANT_WELCOME_FALLBACK_TEXT;
       }
 
-      if (cancelled) {
-        welcomeFlowRef.current.stopTyping();
-        welcomeFlowRef.current.stopBotThinkingSound();
-        setDraftBotText("");
-        setIsTyping(false);
-        assistantAbortRef.current = null;
+      if (stale()) {
+        return;
+      }
+
+      if (
+        responseText.trim() &&
+        !revealedForMessage.trim() &&
+        !welcomeFinishedRef.current
+      ) {
+        revealedForMessage = await welcomeFlowRef.current.revealStaticAssistantText(
+          responseText,
+          ac.signal,
+        );
+      }
+
+      if (stale()) {
         return;
       }
 
@@ -545,7 +506,7 @@ export default function ChatClient() {
 
     void runWelcome();
     return () => {
-      cancelled = true;
+      welcomeRunGenRef.current += 1;
       assistantAbortRef.current?.abort();
       welcomeFlowRef.current.stopTyping();
       welcomeFlowRef.current.stopBotThinkingSound();
@@ -739,7 +700,7 @@ export default function ChatClient() {
                   <span className="text-[#7aab8a]">{m.text}</span>
                 </>
               ) : (
-                <div className="ml-[2ch]">
+                <div className="ml-[2ch] text-[#b8892e]">
                   <BotMessageBody raw={m.text} onDirective={handleInlineDirective} />
                 </div>
               )}

@@ -96,18 +96,9 @@ export default function LandingPage() {
             </div>
           </section>
 
-          <section
-            className="border-t border-[#4a6b58]/60 bg-[#080602]/80 px-6 py-14 sm:px-10"
-            aria-labelledby="benefits-heading"
-          >
+          <section className="border-t border-[#4a6b58]/60 bg-[#080602]/80 px-6 py-14 sm:px-10">
             <div className="mx-auto max-w-5xl">
-              <h2
-                id="benefits-heading"
-                className="text-center text-[0.65rem] tracking-[0.35em] text-[#b8892e]"
-              >
-                WHY GENTA
-              </h2>
-              <ul className="mt-10 grid gap-4 sm:grid-cols-2">
+              <ul className="grid gap-4 sm:grid-cols-2">
                 {WAITLIST_OVERLAY.benefits.map((line) => (
                   <li
                     key={line}

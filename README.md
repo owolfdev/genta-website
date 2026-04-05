@@ -19,7 +19,9 @@ npm install
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) for the marketing landing (waitlist + link to chat). The interactive terminal lives at [`/chat`](http://localhost:3000/chat).
+Open [http://localhost:3000](http://localhost:3000) for the marketing landing (waitlist + link to chat). The interactive terminal lives at [`/chat`](http://localhost:3000/chat). The shell persists ChatIQ’s `conversationId` and the visible user/bot transcript in **`localStorage`** (`genta.chatiq.session.v1`) so a return visit restores the thread and skips the welcome.
+
+The landing page highlights product benefits from `shellConfig` (`WAITLIST_OVERLAY.benefits`).
 
 Other scripts: `npm run build`, `npm run start`, `npm run lint`.
 

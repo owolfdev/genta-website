@@ -1,4 +1,4 @@
-import { matchPauseDirectiveAt } from "./botDirectives";
+import { matchClearDirectiveAt, matchPauseDirectiveAt } from "./botDirectives";
 import { activeStreamSoundKind, type StreamSoundKind } from "./botProtocol";
 
 /**
@@ -55,7 +55,13 @@ export type RevealAbortFinal = "buffer" | "visible";
  * Reveal text from a growing buffer (SSE) one character at a time.
  * Stops when the stream is done and all buffered characters have been shown.
  * Pass `signal` to let the user interrupt; use `abortFinal` to choose whether the
- * returned text is the full buffer (streaming) or only what had been revealed (static welcome).
+ * returned text is the full buffer (`buffer`) or the revealed transcript (`visible`, excluding
+ * `@pause` / `@clear` token characters — same string passed to `setVisible`). On successful
+ * completion, `visible` is returned when `abortFinal` is `visible` so stored welcome text
+ * matches the typing animation.
+ *
+ * `@clear` — consumed in the buffer; clears the on-screen visible substring so content after it
+ * types from a blank area (full buffer is still returned for storage when using stream mode).
  */
 export async function revealBufferedBotText(opts: {
   getBuffer: () => string;
@@ -72,7 +78,10 @@ export async function revealBufferedBotText(opts: {
   abortFinal?: RevealAbortFinal;
 }): Promise<string> {
   const abortFinal: RevealAbortFinal = opts.abortFinal ?? "buffer";
-  let displayed = "";
+  /** Consumption index into the full buffer (includes `@pause` / `@clear` tokens). */
+  let bufPos = 0;
+  /** Post-`@clear` visible substring; not necessarily a prefix of the buffer. */
+  let visible = "";
   let firstCharHandled = false;
   let lastSoundKind: StreamSoundKind = "bot";
 
@@ -80,7 +89,7 @@ export async function revealBufferedBotText(opts: {
     const buffer = opts.getBuffer();
     let out: string;
     if (abortFinal === "visible") {
-      out = displayed;
+      out = visible;
     } else {
       out = buffer;
       opts.setVisible(buffer);
@@ -98,12 +107,12 @@ export async function revealBufferedBotText(opts: {
       const buffer = opts.getBuffer();
       const done = opts.isStreamDone();
 
-      if (done && displayed.length >= buffer.length) {
+      if (done && bufPos >= buffer.length) {
         break;
       }
 
-      if (displayed.length < buffer.length) {
-        const pauseHit = matchPauseDirectiveAt(buffer, displayed.length);
+      if (bufPos < buffer.length) {
+        const pauseHit = matchPauseDirectiveAt(buffer, bufPos);
         if (pauseHit) {
           try {
             await delay(pauseHit.ms, opts.signal);
@@ -113,23 +122,33 @@ export async function revealBufferedBotText(opts: {
             }
             throw e;
           }
-          displayed = buffer.slice(0, displayed.length + pauseHit.len);
-          opts.setVisible(displayed);
-          // Do not fire onFirstChar here — pause is invisible; first real character should stop "thinking".
+          bufPos += pauseHit.len;
+          opts.setVisible(visible);
+          continue;
+        }
+
+        const clearHit = matchClearDirectiveAt(buffer, bufPos);
+        if (clearHit) {
+          visible = "";
+          bufPos += clearHit.len;
+          opts.setVisible(visible);
+          firstCharHandled = false;
+          lastSoundKind = "bot";
           continue;
         }
 
         try {
-          await delay(delayMsBeforeNextChar(displayed.length), opts.signal);
+          await delay(delayMsBeforeNextChar(visible.length), opts.signal);
         } catch (e) {
           if (e instanceof DOMException && e.name === "AbortError") {
             return abortAndFinish();
           }
           throw e;
         }
-        displayed = buffer.slice(0, displayed.length + 1);
-        opts.setVisible(displayed);
-        const kind = activeStreamSoundKind(displayed);
+        visible += buffer[bufPos]!;
+        bufPos += 1;
+        opts.setVisible(visible);
+        const kind = activeStreamSoundKind(visible);
         if (!firstCharHandled) {
           firstCharHandled = true;
           opts.onFirstChar?.();
@@ -158,6 +177,10 @@ export async function revealBufferedBotText(opts: {
       opts.onAfterAsciiSegment?.();
     }
     opts.onComplete?.();
+    /** `abortFinal: "visible"` (welcome typing): stored transcript must match what was revealed — pause/clear tokens are never appended to `visible`. */
+    if (abortFinal === "visible") {
+      return visible;
+    }
     return opts.getBuffer();
   } catch (e) {
     if (e instanceof DOMException && e.name === "AbortError") {

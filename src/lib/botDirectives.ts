@@ -32,9 +32,29 @@ export function matchPauseDirectiveAt(
   return { len: m[0].length, ms: clampPauseMs(Number(m[1])) };
 }
 
+/**
+ * If `s[fromIndex:]` begins with `@clear`, returns token length (reveal loop consumes it; screen resets).
+ */
+export function matchClearDirectiveAt(s: string, fromIndex: number): { len: number } | null {
+  if (fromIndex < 0 || fromIndex >= s.length) {
+    return null;
+  }
+  const sub = s.slice(fromIndex);
+  const m = sub.match(/^@clear\b/);
+  if (!m) {
+    return null;
+  }
+  return { len: m[0].length };
+}
+
 /** Remove completed pause tokens from plain text (e.g. chat history). */
 export function stripPauseDirectivesFromText(text: string): string {
   return text.replace(/@pause\[\d+\]/g, "");
+}
+
+/** Remove `@clear` tokens (not sent to model context / history helpers). */
+export function stripClearDirectivesFromText(text: string): string {
+  return text.replace(/@clear\b/g, "");
 }
 
 /**
