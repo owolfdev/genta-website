@@ -17,6 +17,17 @@ export const metadata: Metadata = {
   title: "Privacy Policy",
   description:
     "How Genta collects, uses, and protects personal data on trygenta.com — waitlist, on-site chat, and related services.",
+  openGraph: {
+    title: "Privacy Policy · Genta",
+    description:
+      "How Genta collects, uses, and protects personal data on trygenta.com — waitlist, on-site chat, and related services.",
+    url: "/privacy",
+  },
+  twitter: {
+    title: "Privacy Policy · Genta",
+    description:
+      "How Genta collects, uses, and protects personal data on trygenta.com — waitlist, on-site chat, and related services.",
+  },
 };
 
 const linkClass =

@@ -4,19 +4,19 @@ Check items off as you complete or close them. “Investigate” means confirm c
 
 ## 1. Route split: marketing landing + interactive chat (Option B)
 
-- [ ] Add an SSR **landing page** at `/` with real HTML: primary **`<h1>`**, value proposition, waitlist (inline form or clear CTA), link to **Privacy**, and a primary CTA to the terminal (e.g. “Open terminal” / “Try Genta”).
-- [ ] Move the current client-only shell to a dedicated route (e.g. **`/chat`**) and keep **`dynamic(..., { ssr: false })`** there if the full chat UI must stay client-only.
-- [ ] Update internal links (`WaitlistOverlay`, header, privacy links, any `Link`/`href`/`router.push`) so they target `/` vs `/chat` correctly.
-- [ ] Decide **redirects**: e.g. whether `/` should ever auto-redirect to `/chat` for returning users (usually avoid for SEO; prefer explicit CTA).
-- [ ] Revisit **waitlist gate** UX on `/chat`: modal on first visit vs always-visible link back to landing waitlist — pick one consistent story.
+- [x] Add an SSR **landing page** at `/` with real HTML: primary **`<h1>`**, value proposition, waitlist (inline form or clear CTA), link to **Privacy**, and a primary CTA to the terminal (e.g. “Open terminal” / “Try Genta”).
+- [x] Move the current client-only shell to a dedicated route (e.g. **`/chat`**) and keep **`dynamic(..., { ssr: false })`** there if the full chat UI must stay client-only. (`src/app/chat/page.tsx` → `chat-dynamic.tsx` → `dynamic(..., { ssr: false })`.)
+- [x] Update internal links (`WaitlistOverlay`, header, privacy links, any `Link`/`href`/`router.push`) so they target `/` vs `/chat` correctly. (`CHAT_ROUTE` on landing/contact; chat shell links home to **`/`**; legal routes unchanged.)
+- [x] Decide **redirects**: e.g. whether `/` should ever auto-redirect to `/chat` for returning users (usually avoid for SEO; prefer explicit CTA). (**No** `middleware` auto-redirect; marketing **`/`** stays the default entry.)
+- [x] Revisit **waitlist gate** UX on `/chat`: modal on first visit vs always-visible link back to landing waitlist — pick one consistent story. (**Chosen:** no forced modal on first paint; waitlist opens from header / inline bot control; primary signup story remains the landing `#waitlist`.)
 
 ## 2. Investigate: root `metadata` and social previews
 
-- [ ] Set **`metadataBase`** to the production origin (e.g. `https://trygenta.com`) so relative URLs resolve for Open Graph and canonicals.
-- [ ] Replace generic **`description`** on the default layout with a user-facing, keyword-aligned one-line pitch (drop internal phrasing like “marketing site”).
-- [ ] Add **Open Graph** (`openGraph.title`, `description`, `url`, `siteName`, `locale`, and type where relevant).
-- [ ] Add **Twitter card** metadata (`card`, `title`, `description`) aligned with OG.
-- [ ] Use **`title.template`** or per-route titles so pages share a consistent pattern (e.g. `%s | Genta`) without clashing with `/privacy`.
+- [x] Set **`metadataBase`** to the production origin (e.g. `https://trygenta.com`) so relative URLs resolve for Open Graph and canonicals. (`src/app/layout.tsx`.)
+- [x] Replace generic **`description`** on the default layout with a user-facing, keyword-aligned one-line pitch (drop internal phrasing like “marketing site”). (Default in root layout; `/` uses `WAITLIST_OVERLAY.tagline` for a fuller pitch.)
+- [x] Add **Open Graph** (`openGraph.title`, `description`, `url`, `siteName`, `locale`, and type where relevant). (Defaults in root layout; **`url`** set per route on `/`, `/chat`, `/privacy`, `/contact`.)
+- [x] Add **Twitter card** metadata (`card`, `title`, `description`) aligned with OG. (`summary_large_image` in root; per-route **title** / **description** match OG.)
+- [x] Use **`title.template`** or per-route titles so pages share a consistent pattern (e.g. `%s | Genta`) without clashing with `/privacy`. (**`%s · Genta`** in root layout; each page sets **`title`** only.)
 
 ## 3. Investigate: icons and share images
 

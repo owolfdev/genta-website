@@ -15,6 +15,15 @@ const terminalFont = Share_Tech_Mono({
 export const metadata: Metadata = {
   title: "Local-first AI assistant",
   description: WAITLIST_OVERLAY.tagline,
+  openGraph: {
+    title: "Local-first AI assistant · Genta",
+    description: WAITLIST_OVERLAY.tagline,
+    url: "/",
+  },
+  twitter: {
+    title: "Local-first AI assistant · Genta",
+    description: WAITLIST_OVERLAY.tagline,
+  },
 };
 
 function CheckIcon() {

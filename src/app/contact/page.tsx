@@ -16,6 +16,15 @@ const linkClass =
 export const metadata: Metadata = {
   title: "Contact",
   description: "Send a message to the Genta team — trygenta.com.",
+  openGraph: {
+    title: "Contact · Genta",
+    description: "Send a message to the Genta team — trygenta.com.",
+    url: "/contact",
+  },
+  twitter: {
+    title: "Contact · Genta",
+    description: "Send a message to the Genta team — trygenta.com.",
+  },
 };
 
 export default function ContactPage() {

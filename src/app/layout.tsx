@@ -12,14 +12,28 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const siteDescription =
+  "Local-first AI assistant for desktop and mobile — your chat, tools, and memory on your device by default.";
+
 export const metadata: Metadata = {
   metadataBase: new URL("https://trygenta.com"),
   title: {
     default: "Genta",
     template: "%s · Genta",
   },
-  description:
-    "Local-first AI assistant for desktop and mobile — your chat, tools, and memory on your device by default.",
+  description: siteDescription,
+  openGraph: {
+    type: "website",
+    locale: "en_US",
+    siteName: "Genta",
+    title: "Genta",
+    description: siteDescription,
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Genta",
+    description: siteDescription,
+  },
 };
 
 export default function RootLayout({
